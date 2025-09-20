@@ -1,0 +1,33 @@
+{
+    "site": {
+        "name": "Galaxy Healing World",
+        "description": "Your journey to healing starts here",
+        "email": "susantpwd@gmail.com",
+        "phone": "9861574469",
+        "address": "galaxy healing word, healing strate city, near national therapy center, central china"
+    },
+    "database": {
+        "type": "sqlite",
+        "sqlite_path": "C:\\Users\\susan\\OneDrive\\Desktop\\repo\\galaxy-healing-world\/database\/sqlite.db",
+        "mysql": {
+            "host": "localhost",
+            "username": "",
+            "password": "",
+            "database": ""
+        }
+    },
+    "email": {
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": "587",
+        "smtp_username": "susantpwd@gmail.com",
+        "smtp_password": "longviozrnfnbqzg",
+        "from_email": "susantpwd@gmail.com",
+        "from_name": "Galaxy Healing World"
+    },
+    "payment": {
+        "upi_id": "",
+        "qr_code_path": "\/assets\/images\/payment-qr.png",
+        "whatsapp_number": "9861574469",
+        "first_session_amount": "500"
+    }
+}
