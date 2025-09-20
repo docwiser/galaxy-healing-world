@@ -6,8 +6,12 @@ class Database {
     private $pdo = null;
 
     private function __construct() {
-        $this->pdo = Config::getDB();
-        $this->initializeTables();
+        try {
+            $this->pdo = Config::getDB();
+            $this->initializeTables();
+        } catch (Exception $e) {
+            throw new Exception("Database initialization failed: " . $e->getMessage());
+        }
     }
 
     public static function getInstance() {

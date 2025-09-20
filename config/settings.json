@@ -8,7 +8,7 @@
     },
     "database": {
         "type": "sqlite",
-        "sqlite_path": "C:\\Users\\susan\\OneDrive\\Desktop\\repo\\galaxy-healing-world\/database\/sqlite.db",
+        "sqlite_path": "../database/sqlite.db",
         "mysql": {
             "host": "localhost",
             "username": "",

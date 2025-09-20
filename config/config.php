@@ -11,7 +11,7 @@ class Config {
         ],
         'database' => [
             'type' => 'sqlite', // sqlite or mysql
-            'sqlite_path' => __DIR__ . '/../database/sqlite.db',
+            'sqlite_path' => '',
             'mysql' => [
                 'host' => 'localhost',
                 'username' => '',
@@ -77,6 +77,11 @@ class Config {
                 self::$config = array_merge_recursive(self::$config, $config);
             }
         }
+        
+        // Set default sqlite path if not set
+        if (empty(self::$config['database']['sqlite_path'])) {
+            self::$config['database']['sqlite_path'] = __DIR__ . '/../database/sqlite.db';
+        }
     }
 
     public static function save() {
@@ -97,6 +102,10 @@ class Config {
                 ]);
             } else {
                 $sqlitePath = self::get('database.sqlite_path');
+                // Ensure we have a string path, not an array
+                if (is_array($sqlitePath)) {
+                    $sqlitePath = __DIR__ . '/../database/sqlite.db';
+                }
                 $dir = dirname($sqlitePath);
                 if (!is_dir($dir)) {
                     mkdir($dir, 0755, true);

@@ -10,6 +10,7 @@ if (isset($_SESSION['admin_logged_in'])) {
 }
 
 $error = '';
+$username = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
@@ -112,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-group">
                     <label for="username">Username or Email</label>
                     <input type="text" id="username" name="username" required 
-                           value="<?php echo htmlspecialchars($username ?? ''); ?>">
+                           value="<?php echo htmlspecialchars($username); ?>">
                 </div>
                 
                 <div class="form-group">
