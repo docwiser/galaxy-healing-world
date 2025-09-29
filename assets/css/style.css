@@ -20,12 +20,12 @@ body {
 }
 
 /* Header Styles */
-.header {
+header {
     text-align: center;
     margin-bottom: 40px;
 }
 
-.logo h1 {
+header h1 {
     font-size: 2.5rem;
     font-weight: 700;
     color: #ffffff;
@@ -33,19 +33,19 @@ body {
     text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
-.logo p {
+header p {
     font-size: 1.1rem;
     color: #e2e8f0;
     font-weight: 300;
 }
 
 /* Main Content */
-.main-content {
+main {
     max-width: 800px;
     margin: 0 auto;
 }
 
-.welcome-section {
+main > section:first-of-type {
     text-align: center;
     margin-bottom: 30px;
     background: rgba(255, 255, 255, 0.1);
@@ -55,14 +55,14 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.welcome-section h2 {
+main > section:first-of-type h2 {
     font-size: 2rem;
     color: #ffffff;
     margin-bottom: 12px;
     font-weight: 600;
 }
 
-.welcome-section p {
+main > section:first-of-type p {
     font-size: 1.1rem;
     color: #e2e8f0;
     font-weight: 300;
@@ -87,7 +87,7 @@ body {
     text-align: center;
 }
 
-.form-card h4 {
+.form-card legend {
     font-size: 1.2rem;
     color: #4a5568;
     margin: 24px 0 16px 0;
@@ -97,7 +97,8 @@ body {
 }
 
 /* Form Elements */
-.form-group {
+.form-card > div,
+.form-card > fieldset > div {
     margin-bottom: 20px;
 }
 
@@ -107,21 +108,17 @@ body {
     margin-bottom: 20px;
 }
 
-.form-row .form-group {
+.form-row > div {
     flex: 1;
     margin-bottom: 0;
 }
 
-.form-group label {
+label {
     display: block;
     margin-bottom: 6px;
     color: #4a5568;
     font-weight: 500;
     font-size: 0.95rem;
-}
-
-.required {
-    color: #e53e3e;
 }
 
 input[type="text"],
@@ -161,7 +158,7 @@ textarea {
     gap: 12px;
 }
 
-.radio-label {
+.radio-group label {
     display: flex;
     align-items: center;
     cursor: pointer;
@@ -173,95 +170,39 @@ textarea {
     transition: all 0.2s ease;
 }
 
-.radio-label:hover {
+.radio-group label:hover {
     border-color: #cbd5e0;
     background: #f7fafc;
 }
 
-.radio-label input[type="radio"] {
-    display: none;
-}
-
-.radio-custom {
+.radio-group input[type="radio"] {
+    margin-right: 12px;
     width: 20px;
     height: 20px;
-    border: 2px solid #cbd5e0;
-    border-radius: 50%;
-    margin-right: 12px;
-    position: relative;
-    flex-shrink: 0;
-    transition: all 0.2s ease;
+    accent-color: #667eea;
 }
 
-.radio-label input[type="radio"]:checked + .radio-custom {
-    border-color: #667eea;
-    background: #667eea;
-}
-
-.radio-label input[type="radio"]:checked + .radio-custom::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 8px;
-    height: 8px;
-    background: #ffffff;
-    border-radius: 50%;
-}
-
-.radio-label input[type="radio"]:checked {
-    background: #667eea;
-}
-
-.radio-label:has(input[type="radio"]:checked) {
+.radio-group label:has(input[type="radio"]:checked) {
     border-color: #667eea;
     background: rgba(102, 126, 234, 0.05);
 }
 
 /* Custom Checkbox */
-.checkbox-group {
-    margin-top: 8px;
-}
-
-.checkbox-label {
+input[type="checkbox"] + label,
+label:has(input[type="checkbox"]) {
     display: flex;
     align-items: center;
     cursor: pointer;
     font-size: 0.9rem;
     color: #4a5568;
+    margin-top: 8px;
 }
 
-.checkbox-label input[type="checkbox"] {
-    display: none;
-}
-
-.checkbox-custom {
+input[type="checkbox"] {
     width: 18px;
     height: 18px;
-    border: 2px solid #cbd5e0;
-    border-radius: 4px;
     margin-right: 8px;
-    position: relative;
-    flex-shrink: 0;
-    transition: all 0.2s ease;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
-    border-color: #667eea;
-    background: #667eea;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 6px;
-    width: 4px;
-    height: 8px;
-    border: solid #ffffff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
+    accent-color: #667eea;
 }
 
 /* Buttons */
@@ -309,21 +250,18 @@ textarea {
     border: 1px solid #e2e8f0;
 }
 
-.info-display .label {
-    font-weight: 500;
-    color: #4a5568;
-    margin-right: 8px;
-}
-
 /* Sections */
-.attendant-section,
-.address-section,
-.disability-section {
+.section {
     background: #f8f9fa;
     padding: 20px;
     border-radius: 12px;
     margin: 20px 0;
     border: 1px solid #e9ecef;
+}
+
+.section legend {
+    font-weight: 600;
+    padding: 0 10px;
 }
 
 /* Messages */
@@ -353,7 +291,7 @@ textarea {
 }
 
 /* Footer */
-.footer {
+footer {
     text-align: center;
     margin-top: 40px;
     padding: 20px;
@@ -368,21 +306,26 @@ input[type="file"] {
     background: #f7fafc;
 }
 
+small {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .container {
         padding: 15px;
     }
     
-    .logo h1 {
+    header h1 {
         font-size: 2rem;
     }
     
-    .welcome-section {
+    main > section:first-of-type {
         padding: 20px;
     }
     
-    .welcome-section h2 {
+    main > section:first-of-type h2 {
         font-size: 1.5rem;
     }
     
@@ -395,7 +338,7 @@ input[type="file"] {
         gap: 0;
     }
     
-    .form-row .form-group {
+    .form-row > div {
         margin-bottom: 20px;
     }
     
@@ -403,7 +346,7 @@ input[type="file"] {
         gap: 8px;
     }
     
-    .radio-label {
+    .radio-group label {
         padding: 10px 12px;
         font-size: 0.95rem;
     }
@@ -415,7 +358,7 @@ input[type="file"] {
         padding: 12px;
     }
     
-    .logo h1 {
+    header h1 {
         font-size: 1.8rem;
     }
     
@@ -455,9 +398,20 @@ textarea:focus {
     outline-offset: 2px;
 }
 
-.radio-label:focus-within,
-.checkbox-label:focus-within {
-    outline: 2px solid #667eea;
-    outline-offset: 2px;
-    border-radius: 8px;
+/* Screen reader only content */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Remove custom styling conflicts */
+fieldset {
+    border: none;
 }
