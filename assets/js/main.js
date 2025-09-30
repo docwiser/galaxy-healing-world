@@ -267,4 +267,43 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!isVerified) {
         generateClientId();
     }
+    
+    // Initialize verification label
+    updateVerificationLabel();
 });
+
+// Update verification label and placeholder based on selected method
+function updateVerificationLabel() {
+    const selectedMethod = document.querySelector('input[name="verify_method"]:checked');
+    const label = document.getElementById('verify_value_label');
+    const input = document.getElementById('verify_value');
+    
+    if (!selectedMethod) {
+        label.textContent = 'Verification Details';
+        input.placeholder = 'Enter your verification details';
+        input.type = 'text';
+        return;
+    }
+    
+    switch(selectedMethod.value) {
+        case 'phone':
+            label.textContent = 'Phone Number';
+            input.placeholder = 'Enter your phone number';
+            input.type = 'tel';
+            break;
+        case 'email':
+            label.textContent = 'Email Address';
+            input.placeholder = 'Enter your email address';
+            input.type = 'email';
+            break;
+        case 'client_id':
+            label.textContent = 'Client ID';
+            input.placeholder = 'Enter your client ID';
+            input.type = 'text';
+            break;
+        default:
+            label.textContent = 'Verification Details';
+            input.placeholder = 'Enter your verification details';
+            input.type = 'text';
+    }
+}

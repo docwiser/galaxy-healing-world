@@ -44,20 +44,20 @@
                         <legend>Select verification method:</legend>
                         <div class="radio-group">
                             <label>
-                                <input type="radio" name="verify_method" value="phone">
+                                <input type="radio" name="verify_method" value="phone" onchange="updateVerificationLabel()">
                                 Phone Number
                             </label>
                             <label>
-                                <input type="radio" name="verify_method" value="email">
+                                <input type="radio" name="verify_method" value="email" onchange="updateVerificationLabel()">
                                 Email Address
                             </label>
                             <label>
-                                <input type="radio" name="verify_method" value="client_id">
+                                <input type="radio" name="verify_method" value="client_id" onchange="updateVerificationLabel()">
                                 Client ID
                             </label>
                         </div>
                     </fieldset>
-                    <label for="verify_value">Verification Details</label>
+                    <label for="verify_value" id="verify_value_label">Verification Details</label>
                     <input type="text" id="verify_value" name="verify_value" placeholder="Enter your verification details" required>
                     <button type="submit" class="btn btn-primary">Verify</button>
                 </form>
