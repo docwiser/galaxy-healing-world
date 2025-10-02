@@ -236,6 +236,12 @@ $categories = $stmt->fetchAll();
                                                         <i data-feather="edit" aria-hidden="true"></i>
                                                         Status
                                                     </button>
+                                                    <button type="button" class="btn btn-small btn-danger" 
+                                                            onclick="deleteUser(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['name']); ?>')"
+                                                            aria-label="Delete user <?php echo htmlspecialchars($user['name']); ?>">
+                                                        <i data-feather="trash-2" aria-hidden="true"></i>
+                                                        Delete
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -329,9 +335,47 @@ $categories = $stmt->fetchAll();
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal" role="dialog" aria-labelledby="deleteModalTitle" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="deleteModalTitle">Confirm User Deletion</h3>
+                <button type="button" class="modal-close" onclick="closeDeleteModal()" aria-label="Close modal">
+                    <i data-feather="x" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="delete-warning">
+                    <i data-feather="alert-triangle" aria-hidden="true" style="color: #ef4444; width: 48px; height: 48px; margin-bottom: 16px;"></i>
+                    <h4>Are you sure you want to delete this user?</h4>
+                    <p id="deleteUserName" style="font-weight: 600; margin: 12px 0;"></p>
+                    <div class="warning-details">
+                        <p><strong>This action will permanently delete:</strong></p>
+                        <ul style="margin: 12px 0; padding-left: 20px; color: #ef4444;">
+                            <li>The user's profile and personal information</li>
+                            <li>All associated therapy sessions</li>
+                            <li>All agent forms and assessments</li>
+                            <li>Any related email logs</li>
+                        </ul>
+                        <p style="color: #ef4444; font-weight: 600; margin-top: 16px;">
+                            ⚠️ This action cannot be undone and you will not be able to restore this data.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="modal-actions" style="margin-top: 24px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()">
+                        <i data-feather="trash-2" aria-hidden="true"></i>
+                        Yes, Delete User
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
-        feather.replace();
 
         function viewUser(userId) {
             fetch(`api/get-user.php?id=${userId}`)
@@ -479,16 +523,76 @@ $categories = $stmt->fetchAll();
             document.getElementById('statusModal').setAttribute('aria-hidden', 'true');
         }
 
+        let userToDelete = null;
+
+        function deleteUser(userId, userName) {
+            userToDelete = userId;
+            document.getElementById('deleteUserName').textContent = userName;
+            document.getElementById('deleteModal').classList.add('active');
+            document.getElementById('deleteModal').setAttribute('aria-hidden', 'false');
+            document.querySelector('#deleteModal .btn-secondary').focus();
+        }
+
+        function closeDeleteModal() {
+            userToDelete = null;
+            document.getElementById('deleteModal').classList.remove('active');
+            document.getElementById('deleteModal').setAttribute('aria-hidden', 'true');
+        }
+
+        function confirmDelete() {
+            if (!userToDelete) return;
+            
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            const originalText = confirmBtn.innerHTML;
+            
+            // Show loading state
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i data-feather="loader"></i> Deleting...';
+            
+            fetch('/admin/api/delete-user.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userToDelete
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeDeleteModal();
+                    // Show success message and reload page
+                    alert('User deleted successfully');
+                    location.reload();
+                } else {
+                    alert('Error deleting user: ' + (data.message || 'Unknown error'));
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting user: ' + error.message);
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalText;
+            });
+        }
+
         // Close modals when clicking outside
         window.onclick = function(event) {
             const userModal = document.getElementById('userModal');
             const statusModal = document.getElementById('statusModal');
+            const deleteModal = document.getElementById('deleteModal');
             
             if (event.target === userModal) {
                 closeModal();
             }
             if (event.target === statusModal) {
                 closeStatusModal();
+            }
+            if (event.target === deleteModal) {
+                closeDeleteModal();
             }
         }
 
@@ -497,6 +601,7 @@ $categories = $stmt->fetchAll();
             if (event.key === 'Escape') {
                 closeModal();
                 closeStatusModal();
+                closeDeleteModal();
             }
         });
     </script>

@@ -74,7 +74,7 @@ class Config {
         if (file_exists($configFile)) {
             $config = json_decode(file_get_contents($configFile), true);
             if ($config) {
-                self::$config = array_merge_recursive(self::$config, $config);
+                self::$config = array_replace_recursive(self::$config, $config);
             }
         }
         
