@@ -168,31 +168,31 @@ $databaseSettings = Config::get('database');
                 <?php endif; ?>
 
                 <!-- Settings Navigation -->
-                <div class="settings-nav">
-                    <button type="button" class="settings-tab active" onclick="showTab('site')" aria-controls="site-settings">
+<!--
+                <div class="settings-nav" role="tablist" aria-label="Settings sections">
+                    <button type="button" class="settings-tab active" onclick="showTab(event, 'site')" role="tab" aria-controls="site-settings" aria-selected="true" id="site-tab">
                         <i data-feather="globe" aria-hidden="true"></i>
                         Site Settings
                     </button>
-                    <button type="button" class="settings-tab" onclick="showTab('email')" aria-controls="email-settings">
+                    <button type="button" class="settings-tab" onclick="showTab(event, 'email')" role="tab" aria-controls="email-settings" aria-selected="false" id="email-tab">
                         <i data-feather="mail" aria-hidden="true"></i>
                         Email Configuration
                     </button>
-                    <button type="button" class="settings-tab" onclick="showTab('payment')" aria-controls="payment-settings">
+                    <button type="button" class="settings-tab" onclick="showTab(event, 'payment')" role="tab" aria-controls="payment-settings" aria-selected="false" id="payment-tab">
                         <i data-feather="credit-card" aria-hidden="true"></i>
                         Payment Settings
                     </button>
-                    <button type="button" class="settings-tab" onclick="showTab('database')" aria-controls="database-settings">
+                    <button type="button" class="settings-tab" onclick="showTab(event, 'database')" role="tab" aria-controls="database-settings" aria-selected="false" id="database-tab">
                         <i data-feather="database" aria-hidden="true"></i>
                         Database
                     </button>
-                    <button type="button" class="settings-tab" onclick="showTab('security')" aria-controls="security-settings">
+                    <button type="button" class="settings-tab" onclick="showTab(event, 'security')" role="tab" aria-controls="security-settings" aria-selected="false" id="security-tab">
                         <i data-feather="shield" aria-hidden="true"></i>
                         Security
                     </button>
                 </div>
-
                 <!-- Site Settings -->
-                <div id="site-settings" class="settings-panel active" role="tabpanel" aria-labelledby="site-tab">
+                <div id="site-settings" class="settings-panel active" role="tabpanel" aria-labelledby="site-tab" tabindex="0">
                     <div class="form-section">
                         <h3>Site Information</h3>
                         <form method="POST">
@@ -249,7 +249,7 @@ $databaseSettings = Config::get('database');
                 </div>
 
                 <!-- Email Settings -->
-                <div id="email-settings" class="settings-panel" role="tabpanel" aria-labelledby="email-tab">
+                <div id="email-settings" class="settings-panel active" role="tabpanel" aria-labelledby="email-tab" tabindex="0">
                     <div class="form-section">
                         <h3>SMTP Configuration</h3>
                         <form method="POST">
@@ -326,7 +326,7 @@ $databaseSettings = Config::get('database');
                 </div>
 
                 <!-- Payment Settings -->
-                <div id="payment-settings" class="settings-panel" role="tabpanel" aria-labelledby="payment-tab">
+                <div id="payment-settings" class="settings-panel active" role="tabpanel" aria-labelledby="payment-tab" tabindex="0">
                     <div class="form-section">
                         <h3>Payment Configuration</h3>
                         <form method="POST">
@@ -381,7 +381,7 @@ $databaseSettings = Config::get('database');
                 </div>
 
                 <!-- Database Settings -->
-                <div id="database-settings" class="settings-panel" role="tabpanel" aria-labelledby="database-tab">
+                <div id="database-settings" class="settings-panel active" role="tabpanel" aria-labelledby="database-tab" tabindex="0">
                     <div class="form-section">
                         <h3>Database Configuration</h3>
                         <div class="current-db-info">
@@ -435,24 +435,24 @@ $databaseSettings = Config::get('database');
                                     <div class="form-group">
                                         <label for="mysql_host">MySQL Host</label>
                                         <input type="text" id="mysql_host" name="mysql_host" class="form-control"
-                                               value="<?php echo htmlspecialchars($databaseSettings['mysql']['host'] ?? 'localhost'); ?>">
+                                               value="<?php echo htmlspecialchars(($databaseSettings['mysql'] ?? [])['host'] ?? 'localhost'); ?>">
                                     </div>
                                     <div class="form-group">
                                         <label for="mysql_database">Database Name</label>
                                         <input type="text" id="mysql_database" name="mysql_database" class="form-control"
-                                               value="<?php echo htmlspecialchars($databaseSettings['mysql']['database'] ?? ''); ?>">
+                                               value="<?php echo htmlspecialchars(($databaseSettings['mysql'] ?? [])['database'] ?? ''); ?>">
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="mysql_username">Username</label>
                                         <input type="text" id="mysql_username" name="mysql_username" class="form-control"
-                                               value="<?php echo htmlspecialchars($databaseSettings['mysql']['username'] ?? ''); ?>">
+                                               value="<?php echo htmlspecialchars(($databaseSettings['mysql'] ?? [])['username'] ?? ''); ?>">
                                     </div>
                                     <div class="form-group">
                                         <label for="mysql_password">Password</label>
                                         <input type="password" id="mysql_password" name="mysql_password" class="form-control"
-                                               value="<?php echo htmlspecialchars($databaseSettings['mysql']['password'] ?? ''); ?>">
+                                               value="<?php echo htmlspecialchars(($databaseSettings['mysql'] ?? [])['password'] ?? ''); ?>">
                                     </div>
                                 </div>
                             </div>
@@ -474,7 +474,7 @@ $databaseSettings = Config::get('database');
                 </div>
 
                 <!-- Security Settings -->
-                <div id="security-settings" class="settings-panel" role="tabpanel" aria-labelledby="security-tab">
+                <div id="security-settings" class="settings-panel active" role="tabpanel" aria-labelledby="security-tab" tabindex="0">
                     <div class="form-section">
                         <h3>Change Password</h3>
                         <form method="POST">
@@ -540,30 +540,30 @@ $databaseSettings = Config::get('database');
     <script>
         feather.replace();
 
-        function showTab(tabName) {
+        function showTab(event, tabName) {
             // Hide all panels
             const panels = document.querySelectorAll('.settings-panel');
             panels.forEach(panel => {
                 panel.classList.remove('active');
                 panel.setAttribute('aria-hidden', 'true');
             });
-            
-            // Hide all tabs
+
+            // Deactivate all tabs
             const tabs = document.querySelectorAll('.settings-tab');
             tabs.forEach(tab => {
                 tab.classList.remove('active');
                 tab.setAttribute('aria-selected', 'false');
             });
-            
+
             // Show selected panel
             const selectedPanel = document.getElementById(tabName + '-settings');
             if (selectedPanel) {
                 selectedPanel.classList.add('active');
                 selectedPanel.setAttribute('aria-hidden', 'false');
             }
-            
+
             // Activate selected tab
-            const selectedTab = event.target;
+            const selectedTab = event.currentTarget;
             selectedTab.classList.add('active');
             selectedTab.setAttribute('aria-selected', 'true');
         }

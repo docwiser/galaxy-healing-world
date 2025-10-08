@@ -14,9 +14,21 @@ try {
     $email = $_POST['email'] ?? '';
     $dob = $_POST['dob'] ?? null;
     $age = null;
-    $state = $_POST['state'] ?? '';
+
+    // New address fields
+    $house_number = $_POST['house_number'] ?? '';
+    $street_locality = $_POST['street_locality'] ?? '';
+    $pincode = $_POST['pincode'] ?? '';
+    $area_village = $_POST['area_village'] ?? '';
+    $city = $_POST['city'] ?? '';
     $district = $_POST['district'] ?? '';
-    $address = $_POST['address'] ?? '';
+    $state = $_POST['state'] ?? '';
+
+    // Build complete address from parts
+    $address_parts = array_filter([$house_number, $street_locality, $area_village, $city, $district, $state, $pincode]);
+    $address = implode(', ', $address_parts);
+
+    $voice_recording_path = $_POST['voice_recording_path'] ?? '';
     $attendant = $_POST['attendant'] ?? 'self';
     $attendant_name = $_POST['attendant_name'] ?? '';
     $attendant_email = $_POST['attendant_email'] ?? '';
@@ -69,16 +81,18 @@ try {
     if ($existingUser) {
         // Update existing user
         $stmt = $pdo->prepare("
-            UPDATE users SET 
-                name = ?, mobile = ?, email = ?, dob = ?, age = ?, state = ?, district = ?, address = ?,
-                attendant = ?, attendant_name = ?, attendant_email = ?, attendant_mobile = ?, 
-                relationship = ?, how_learned = ?, has_disability = ?, disability_type = ?, 
+            UPDATE users SET
+                name = ?, mobile = ?, email = ?, dob = ?, age = ?,
+                house_number = ?, street_locality = ?, pincode = ?, area_village = ?, city = ?, district = ?, state = ?, address = ?,
+                voice_recording_path = ?, attendant = ?, attendant_name = ?, attendant_email = ?, attendant_mobile = ?,
+                relationship = ?, how_learned = ?, has_disability = ?, disability_type = ?,
                 disability_percentage = ?, disability_documents = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ");
         $stmt->execute([
-            $name, $mobile, $email, $dob, $age, $state, $district, $address,
-            $attendant, $attendant_name, $attendant_email, $attendant_mobile,
+            $name, $mobile, $email, $dob, $age,
+            $house_number, $street_locality, $pincode, $area_village, $city, $district, $state, $address,
+            $voice_recording_path, $attendant, $attendant_name, $attendant_email, $attendant_mobile,
             $relationship, $how_learned, $has_disability, $disability_type,
             $disability_percentage, $disability_documents, $existingUser['id']
         ]);
@@ -100,15 +114,17 @@ try {
         // Insert new user
         $stmt = $pdo->prepare("
             INSERT INTO users (
-                client_id, name, mobile, email, dob, age, state, district, address,
-                attendant, attendant_name, attendant_email, attendant_mobile, 
-                relationship, how_learned, has_disability, disability_type, 
+                client_id, name, mobile, email, dob, age,
+                house_number, street_locality, pincode, area_village, city, district, state, address,
+                voice_recording_path, attendant, attendant_name, attendant_email, attendant_mobile,
+                relationship, how_learned, has_disability, disability_type,
                 disability_percentage, disability_documents, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first-time')
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first-time')
         ");
         $stmt->execute([
-            $client_id, $name, $mobile, $email, $dob, $age, $state, $district, $address,
-            $attendant, $attendant_name, $attendant_email, $attendant_mobile,
+            $client_id, $name, $mobile, $email, $dob, $age,
+            $house_number, $street_locality, $pincode, $area_village, $city, $district, $state, $address,
+            $voice_recording_path, $attendant, $attendant_name, $attendant_email, $attendant_mobile,
             $relationship, $how_learned, $has_disability, $disability_type,
             $disability_percentage, $disability_documents
         ]);

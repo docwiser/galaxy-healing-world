@@ -2,48 +2,32 @@
     "site": {
         "name": "Galaxy Healing World",
         "description": "Your journey to healing starts here",
-        "email": "admin@admin.com",
-        "phone": "424-08",
-        "address": "ioepjhfgoeofgbn"
+        "email": "support@galaxyhealingworld.in",
+        "phone": "9852568007",
+        "address": "at- galaxyworld, post- galaxyworld, galaxyworld trademark, Undone city 000000 Globe"
     },
     "database": {
         "type": "sqlite",
         "sqlite_path": "C:\\Users\\susan\\OneDrive\\Desktop\\repo\\galaxy-healing-world\/database\/sqlite.db",
         "mysql": {
-            "host": [
-                "localhost",
-                "localhost",
-                "localhost"
-            ],
-            "username": [
-                "",
-                "",
-                ""
-            ],
-            "password": [
-                "",
-                "",
-                ""
-            ],
-            "database": [
-                "",
-                "",
-                ""
-            ]
+            "host": "localhost",
+            "username": "",
+            "password": "",
+            "database": ""
         }
     },
     "email": {
-        "smtp_host": "smtp.com",
+        "smtp_host": "galaxyhealingworld.in",
         "smtp_port": "587",
-        "smtp_username": "smtp",
-        "smtp_password": "smtp",
-        "from_email": "smtp",
-        "from_name": "smtpGalaxy Healing World"
+        "smtp_username": "support@galaxyhealingworld.in",
+        "smtp_password": "Bookings@galaxyhealingworld",
+        "from_email": "support@galaxyhealingworld.in",
+        "from_name": "Galaxy Healing World"
     },
     "payment": {
         "upi_id": "",
         "qr_code_path": "\/assets\/images\/payment-qr.png",
-        "whatsapp_number": "347u30975",
+        "whatsapp_number": "9852568007",
         "first_session_amount": "500"
     }
 }

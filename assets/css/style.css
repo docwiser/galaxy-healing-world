@@ -415,3 +415,57 @@ textarea:focus {
 fieldset {
     border: none;
 }
+
+/* Voice Recording Styles */
+#recording-controls {
+    margin: 16px 0;
+}
+
+#recording-timer {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #ef4444;
+    text-align: center;
+    margin: 16px 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.recording-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 16px;
+}
+
+.record-icon {
+    display: inline-block;
+    color: #ef4444;
+    font-size: 1.5rem;
+    line-height: 1;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+#startRecording .record-icon {
+    animation: none;
+}
+
+#recording-active .record-icon {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+#audioPlayback {
+    width: 100%;
+    max-width: 500px;
+    margin: 16px auto;
+    display: block;
+}

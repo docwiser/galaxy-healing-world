@@ -149,17 +149,40 @@
                         <legend>Address Information</legend>
                         <div class="form-row">
                             <div>
-                                <label for="state">State *</label>
-                                <input type="text" id="state" name="state" required>
+                                <label for="house_number">House Number/Building Name *</label>
+                                <input type="text" id="house_number" name="house_number" placeholder="e.g., A-101, Sunrise Apartments" required>
                             </div>
                             <div>
-                                <label for="district">District *</label>
-                                <input type="text" id="district" name="district" required>
+                                <label for="street_locality">Street Name/Locality *</label>
+                                <input type="text" id="street_locality" name="street_locality" placeholder="e.g., MG Road" required>
                             </div>
                         </div>
                         <div>
-                            <label for="address">Complete Address *</label>
-                            <textarea id="address" name="address" rows="3" required></textarea>
+                            <label for="pincode">PIN Code *</label>
+                            <input type="text" id="pincode" name="pincode" maxlength="6" pattern="[0-9]{6}" placeholder="Enter 6-digit PIN code" required>
+                            <small id="pincode-status"></small>
+                        </div>
+                        <div id="area-selection" class="hidden">
+                            <label for="area_village">Area/Village *</label>
+                            <select id="area_village" name="area_village">
+                                <option value="">Select area/village</option>
+                            </select>
+                        </div>
+                        <div id="city-selection" class="hidden">
+                            <label for="city">City *</label>
+                            <select id="city" name="city" onchange="fillAddressDetails()">
+                                <option value="">Select city</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <label for="district">District *</label>
+                                <input type="text" id="district" name="district" readonly required>
+                            </div>
+                            <div>
+                                <label for="state">Circle/State *</label>
+                                <input type="text" id="state" name="state" readonly required>
+                            </div>
                         </div>
                     </fieldset>
 
@@ -196,7 +219,30 @@
                         <div class="form-row">
                             <div>
                                 <label for="disability_type">Type of Disability</label>
-                                <input type="text" id="disability_type" name="disability_type">
+                                <select id="disability_type" name="disability_type">
+                                    <option value="">Select a Disability type</option>
+                                    <option value="blindness">Blindness</option>
+                                    <option value="low-vision">Low-vision</option>
+                                    <option value="leprosy-cured-persons">Leprosy Cured persons</option>
+                                    <option value="hearing-impairment">Hearing Impairment (deaf and hard of hearing)</option>
+                                    <option value="locomotor-disability">Locomotor Disability</option>
+                                    <option value="dwarfism">Dwarfism</option>
+                                    <option value="intellectual-disability">Intellectual Disability</option>
+                                    <option value="mental-illness">Mental Illness</option>
+                                    <option value="autism-spectrum-disorder">Autism Spectrum Disorder</option>
+                                    <option value="cerebral-palsy">Cerebral Palsy</option>
+                                    <option value="muscular-dystrophy">Muscular Dystrophy</option>
+                                    <option value="chronic-neurological-conditions">Chronic Neurological conditions</option>
+                                    <option value="specific-learning-disabilities">Specific Learning Disabilities</option>
+                                    <option value="multiple-sclerosis">Multiple Sclerosis</option>
+                                    <option value="speech-and-language-disability">Speech and Language disability</option>
+                                    <option value="thalassemia">Thalassemia</option>
+                                    <option value="hemophilia">Hemophilia</option>
+                                    <option value="sickle-cell-disease">Sickle Cell disease</option>
+                                    <option value="multiple-disabilities">Multiple Disabilities including deaf-blindness</option>
+                                    <option value="acid-attack-victim">Acid Attack victim</option>
+                                    <option value="parkinson-disease">Parkinson's disease</option>
+                                </select>
                             </div>
                             <div>
                                 <label for="disability_percentage">Percentage of Disability</label>
@@ -208,6 +254,32 @@
                             <input type="file" id="disability_documents" name="disability_documents" multiple accept=".pdf,.jpg,.jpeg,.png">
                             <small>Accepted formats: PDF, JPG, JPEG, PNG</small>
                         </div>
+                    </fieldset>
+
+                    <!-- Voice Recording Section -->
+                    <fieldset class="section">
+                        <legend>Record Your Issue (Optional)</legend>
+                        <p>You can record your issue or concern (maximum 1 minute)</p>
+                        <div id="recording-controls">
+                            <button type="button" id="startRecording" class="btn btn-secondary">
+                                <span class="record-icon">●</span> Start Recording
+                            </button>
+                            <div id="recording-active" class="hidden">
+                                <div id="recording-timer">00:00</div>
+                                <div class="recording-buttons">
+                                    <button type="button" id="pauseRecording" class="btn btn-outline">Pause</button>
+                                    <button type="button" id="cancelRecording" class="btn btn-outline">Cancel</button>
+                                    <button type="button" id="stopRecording" class="btn btn-primary">Done</button>
+                                </div>
+                            </div>
+                            <div id="recording-complete" class="hidden">
+                                <audio id="audioPlayback" controls></audio>
+                                <div class="recording-buttons">
+                                    <button type="button" id="discardRecording" class="btn btn-outline">Discard & Record Again</button>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="voice_recording_path" name="voice_recording_path">
                     </fieldset>
 
                     <button type="submit" class="btn btn-primary">Book Session</button>

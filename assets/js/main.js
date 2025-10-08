@@ -69,16 +69,28 @@ document.getElementById('verifyForm').addEventListener('submit', async (e) => {
 // Prefill form with user data
 function prefillForm(data) {
     if (!data) return;
-    
+
     document.getElementById('name').value = data.name || '';
     document.getElementById('mobile').value = data.mobile || '';
     document.getElementById('email').value = data.email || '';
     document.getElementById('dob').value = data.dob || '';
-    document.getElementById('state').value = data.state || '';
-    document.getElementById('district').value = data.district || '';
-    document.getElementById('address').value = data.address || '';
     document.getElementById('how_learned').value = data.how_learned || '';
-    
+
+    // For verified users, prefill new address fields
+    if (data.house_number) document.getElementById('house_number').value = data.house_number;
+    if (data.street_locality) document.getElementById('street_locality').value = data.street_locality;
+    if (data.pincode) document.getElementById('pincode').value = data.pincode;
+    if (data.area_village) document.getElementById('area_village').value = data.area_village;
+    if (data.city) document.getElementById('city').value = data.city;
+    if (data.state) {
+        document.getElementById('state').value = data.state;
+        document.getElementById('state').removeAttribute('readonly');
+    }
+    if (data.district) {
+        document.getElementById('district').value = data.district;
+        document.getElementById('district').removeAttribute('readonly');
+    }
+
     // Handle attendant info
     if (data.attendant && data.attendant !== 'self') {
         document.getElementById('attendant').value = 'other';
@@ -88,7 +100,7 @@ function prefillForm(data) {
         document.getElementById('attendant_mobile').value = data.attendant_mobile || '';
         document.getElementById('relationship').value = data.relationship || '';
     }
-    
+
     // Handle disability info
     if (data.has_disability === 'yes') {
         document.querySelector('input[name="has_disability"][value="yes"]').checked = true;
@@ -96,7 +108,7 @@ function prefillForm(data) {
         document.getElementById('disability_type').value = data.disability_type || '';
         document.getElementById('disability_percentage').value = data.disability_percentage || '';
     }
-    
+
     if (data.dob) {
         calculateAge();
     }
@@ -258,18 +270,300 @@ function showMessage(element, message, type) {
     }, 5000);
 }
 
+// Pincode lookup variables
+let pincodeData = null;
+
+// Handle pincode input and lookup
+function handlePincodeInput() {
+    const pincodeInput = document.getElementById('pincode');
+    const pincodeStatus = document.getElementById('pincode-status');
+    const areaSelection = document.getElementById('area-selection');
+    const citySelection = document.getElementById('city-selection');
+    const areaSelect = document.getElementById('area_village');
+    const citySelect = document.getElementById('city');
+
+    pincodeInput.addEventListener('input', async function() {
+        const pincode = this.value.trim();
+
+        if (pincode.length === 6 && /^\d{6}$/.test(pincode)) {
+            pincodeStatus.textContent = 'Looking up PIN code...';
+            pincodeStatus.style.color = '#667eea';
+
+            try {
+                const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+                const data = await response.json();
+
+                if (data[0].Status === 'Success' && data[0].PostOffice) {
+                    pincodeData = data[0].PostOffice;
+                    pincodeStatus.textContent = `Found ${pincodeData.length} locations`;
+                    pincodeStatus.style.color = '#10b981';
+
+                    // Populate Area/Village dropdown (Name column)
+                    const uniqueAreas = [...new Set(pincodeData.map(office => office.Name))];
+                    areaSelect.innerHTML = '<option value="">Select area/village</option>';
+                    uniqueAreas.forEach(area => {
+                        const option = document.createElement('option');
+                        option.value = area;
+                        option.textContent = area;
+                        areaSelect.appendChild(option);
+                    });
+
+                    // Populate City dropdown (Block column)
+                    const uniqueCities = [...new Set(pincodeData.map(office => office.Block).filter(block => block))];
+                    citySelect.innerHTML = '<option value="">Select city</option>';
+                    uniqueCities.forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city;
+                        option.textContent = city;
+                        citySelect.appendChild(option);
+                    });
+
+                    areaSelection.classList.remove('hidden');
+                    citySelection.classList.remove('hidden');
+                    areaSelect.required = true;
+                    citySelect.required = true;
+
+                    // Auto-fill district and state
+                    const firstOffice = pincodeData[0];
+                    document.getElementById('district').value = firstOffice.District;
+                    document.getElementById('state').value = firstOffice.Circle || firstOffice.State;
+                } else {
+                    pincodeStatus.textContent = 'Invalid PIN code. Please check and try again.';
+                    pincodeStatus.style.color = '#ef4444';
+                    areaSelection.classList.add('hidden');
+                    citySelection.classList.add('hidden');
+                    pincodeData = null;
+                    clearAddressFields();
+                }
+            } catch (error) {
+                pincodeStatus.textContent = 'Error looking up PIN code. Please try again.';
+                pincodeStatus.style.color = '#ef4444';
+                areaSelection.classList.add('hidden');
+                citySelection.classList.add('hidden');
+                pincodeData = null;
+                clearAddressFields();
+            }
+        } else if (pincode.length > 0) {
+            pincodeStatus.textContent = 'Enter 6-digit PIN code';
+            pincodeStatus.style.color = '#6b7280';
+            areaSelection.classList.add('hidden');
+            citySelection.classList.add('hidden');
+            pincodeData = null;
+            clearAddressFields();
+        } else {
+            pincodeStatus.textContent = '';
+            areaSelection.classList.add('hidden');
+            citySelection.classList.add('hidden');
+            pincodeData = null;
+            clearAddressFields();
+        }
+    });
+}
+
+// Fill address details based on selected city
+function fillAddressDetails() {
+    // This function is kept for compatibility but the fields are now auto-filled
+}
+
+// Clear address fields
+function clearAddressFields() {
+    document.getElementById('district').value = '';
+    document.getElementById('state').value = '';
+    document.getElementById('area_village').value = '';
+    document.getElementById('city').value = '';
+}
+
+// Voice recording functionality
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingStartTime = null;
+let recordingTimer = null;
+let isPaused = false;
+let pausedTime = 0;
+const MAX_RECORDING_TIME = 60000; // 60 seconds
+
+function initVoiceRecording() {
+    const startBtn = document.getElementById('startRecording');
+    const pauseBtn = document.getElementById('pauseRecording');
+    const cancelBtn = document.getElementById('cancelRecording');
+    const stopBtn = document.getElementById('stopRecording');
+    const discardBtn = document.getElementById('discardRecording');
+
+    if (!startBtn) return; // Exit if elements don't exist
+
+    startBtn.addEventListener('click', startRecording);
+    pauseBtn.addEventListener('click', pauseResumeRecording);
+    cancelBtn.addEventListener('click', cancelRecording);
+    stopBtn.addEventListener('click', stopRecording);
+    discardBtn.addEventListener('click', discardRecording);
+}
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = handleRecordingComplete;
+
+        mediaRecorder.start();
+        recordingStartTime = Date.now();
+        isPaused = false;
+        pausedTime = 0;
+
+        // Show recording UI
+        document.getElementById('startRecording').classList.add('hidden');
+        document.getElementById('recording-active').classList.remove('hidden');
+
+        // Start timer
+        updateRecordingTimer();
+        recordingTimer = setInterval(() => {
+            const elapsed = Date.now() - recordingStartTime - pausedTime;
+            if (elapsed >= MAX_RECORDING_TIME) {
+                stopRecording();
+            } else {
+                updateRecordingTimer();
+            }
+        }, 100);
+    } catch (error) {
+        alert('Unable to access microphone. Please grant microphone permissions.');
+    }
+}
+
+function pauseResumeRecording() {
+    const pauseBtn = document.getElementById('pauseRecording');
+
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.pause();
+        isPaused = true;
+        pauseBtn.textContent = 'Resume';
+        pausedTime = Date.now() - recordingStartTime;
+        clearInterval(recordingTimer);
+    } else if (mediaRecorder && mediaRecorder.state === 'paused') {
+        mediaRecorder.resume();
+        isPaused = false;
+        pauseBtn.textContent = 'Pause';
+        recordingStartTime = Date.now() - pausedTime;
+        recordingTimer = setInterval(() => {
+            const elapsed = Date.now() - recordingStartTime;
+            if (elapsed >= MAX_RECORDING_TIME) {
+                stopRecording();
+            } else {
+                updateRecordingTimer();
+            }
+        }, 100);
+    }
+}
+
+function cancelRecording() {
+    if (mediaRecorder) {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        mediaRecorder = null;
+    }
+
+    clearInterval(recordingTimer);
+    audioChunks = [];
+
+    // Reset UI
+    document.getElementById('startRecording').classList.remove('hidden');
+    document.getElementById('recording-active').classList.add('hidden');
+    document.getElementById('recording-complete').classList.add('hidden');
+    document.getElementById('recording-timer').textContent = '00:00';
+    document.getElementById('pauseRecording').textContent = 'Pause';
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+    clearInterval(recordingTimer);
+}
+
+function handleRecordingComplete() {
+    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+    const audioUrl = URL.createObjectURL(audioBlob);
+
+    // Display playback
+    const audioPlayback = document.getElementById('audioPlayback');
+    audioPlayback.src = audioUrl;
+
+    // Upload audio file
+    uploadAudioFile(audioBlob);
+
+    // Update UI
+    document.getElementById('recording-active').classList.add('hidden');
+    document.getElementById('recording-complete').classList.remove('hidden');
+    document.getElementById('recording-timer').textContent = '00:00';
+    document.getElementById('pauseRecording').textContent = 'Pause';
+}
+
+async function uploadAudioFile(audioBlob) {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+
+    try {
+        const response = await fetch('api/upload-audio.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            document.getElementById('voice_recording_path').value = result.path;
+        } else {
+            console.error('Audio upload failed:', result.message);
+        }
+    } catch (error) {
+        console.error('Error uploading audio:', error);
+    }
+}
+
+function discardRecording() {
+    // Clear the uploaded file path
+    document.getElementById('voice_recording_path').value = '';
+
+    // Reset UI
+    document.getElementById('startRecording').classList.remove('hidden');
+    document.getElementById('recording-complete').classList.add('hidden');
+    document.getElementById('audioPlayback').src = '';
+    audioChunks = [];
+}
+
+function updateRecordingTimer() {
+    const elapsed = Date.now() - recordingStartTime - (isPaused ? pausedTime : 0);
+    const seconds = Math.floor(elapsed / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    const timerDisplay = document.getElementById('recording-timer');
+    timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
 // Initialize form on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Set up event listeners
     document.getElementById('dob').addEventListener('change', calculateAge);
-    
+
     // Initialize client ID generation for new users
     if (!isVerified) {
         generateClientId();
     }
-    
+
     // Initialize verification label
     updateVerificationLabel();
+
+    // Initialize pincode lookup
+    handlePincodeInput();
+
+    // Initialize voice recording
+    initVoiceRecording();
 });
 
 // Update verification label and placeholder based on selected method

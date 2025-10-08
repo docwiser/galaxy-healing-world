@@ -18,29 +18,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     if ($action === 'send_email') {
-        $recipients = $_POST['recipients'] ?? '';
+        $recipient_type = $_POST['recipient_type'] ?? '';
         $subject = trim($_POST['subject'] ?? '');
         $message = trim($_POST['message'] ?? '');
-        $send_to_all = isset($_POST['send_to_all']);
-        
+
         if ($subject && $message) {
             try {
                 $emailHelper = new EmailHelper();
                 $recipientList = [];
-                
-                if ($send_to_all) {
+
+                if ($recipient_type === 'all') {
                     // Get all users
                     $stmt = $pdo->query("SELECT name, email FROM users WHERE email IS NOT NULL AND email != ''");
                     $users = $stmt->fetchAll();
-                    
+
                     foreach ($users as $user) {
                         $recipientList[] = [
                             'name' => $user['name'],
                             'email' => $user['email']
                         ];
                     }
-                } else {
-                    // Parse individual recipients
+                } elseif ($recipient_type === 'selected') {
+                    // Get selected users
+                    $selectedUsers = $_POST['selected_users'] ?? [];
+                    if (!empty($selectedUsers)) {
+                        $placeholders = implode(',', array_fill(0, count($selectedUsers), '?'));
+                        $stmt = $pdo->prepare("SELECT name, email FROM users WHERE id IN ($placeholders) AND email IS NOT NULL AND email != ''");
+                        $stmt->execute($selectedUsers);
+                        $users = $stmt->fetchAll();
+
+                        foreach ($users as $user) {
+                            $recipientList[] = [
+                                'name' => $user['name'],
+                                'email' => $user['email']
+                            ];
+                        }
+                    }
+                } elseif ($recipient_type === 'custom') {
+                    // Parse custom email addresses
+                    $recipients = $_POST['recipients'] ?? '';
                     $emails = array_filter(array_map('trim', explode(',', $recipients)));
                     foreach ($emails as $email) {
                         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -103,6 +119,16 @@ $recentEmails = $stmt->fetchAll();
 // Get user count for bulk email
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM users WHERE email IS NOT NULL AND email != ''");
 $userCount = $stmt->fetch()['count'];
+
+// Get all users for selection
+$stmt = $pdo->query("
+    SELECT u.id, u.name, u.email, u.client_id, u.status, c.color as category_color
+    FROM users u
+    LEFT JOIN categories c ON u.status = c.name
+    WHERE u.email IS NOT NULL AND u.email != ''
+    ORDER BY u.name
+");
+$allUsers = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -196,22 +222,51 @@ $userCount = $stmt->fetch()['count'];
                                     <label>Recipients</label>
                                     <div class="recipient-options">
                                         <label class="radio-label">
-                                            <input type="radio" name="recipient_type" value="all" 
+                                            <input type="radio" name="recipient_type" value="all"
                                                    onchange="toggleRecipientInput()" checked>
                                             <span class="radio-custom"></span>
                                             Send to all registered users (<?php echo $userCount; ?> users)
                                         </label>
                                         <label class="radio-label">
-                                            <input type="radio" name="recipient_type" value="specific" 
+                                            <input type="radio" name="recipient_type" value="selected"
                                                    onchange="toggleRecipientInput()">
                                             <span class="radio-custom"></span>
-                                            Send to specific email addresses
+                                            Send to selected users
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="recipient_type" value="custom"
+                                                   onchange="toggleRecipientInput()">
+                                            <span class="radio-custom"></span>
+                                            Send to custom email addresses
                                         </label>
                                     </div>
-                                    <input type="hidden" name="send_to_all" id="sendToAll" value="1">
                                 </div>
-                                
-                                <div class="form-group" id="recipientInput" style="display: none;">
+
+                                <div class="form-group" id="selectedUsersInput" style="display: none;">
+                                    <label>Select Users</label>
+                                    <div class="user-selection-grid">
+                                        <?php foreach ($allUsers as $user): ?>
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" name="selected_users[]" value="<?php echo $user['id']; ?>">
+                                                <span class="checkbox-custom"></span>
+                                                <span class="user-info">
+                                                    <strong><?php echo htmlspecialchars($user['name']); ?></strong>
+                                                    <small><?php echo htmlspecialchars($user['email']); ?></small>
+                                                    <small>ID: <?php echo htmlspecialchars($user['client_id']); ?></small>
+                                                    <small>
+                                                        <span class="status-badge-inline"
+                                                              style="background-color: <?php echo htmlspecialchars($user['category_color'] ?? '#6b7280'); ?>">
+                                                            <?php echo htmlspecialchars(ucwords(str_replace('-', ' ', $user['status']))); ?>
+                                                        </span>
+                                                    </small>
+                                                </span>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <small>Select one or more users to send email</small>
+                                </div>
+
+                                <div class="form-group" id="customEmailInput" style="display: none;">
                                     <label for="recipients">Email Addresses</label>
                                     <textarea id="recipients" name="recipients" rows="3" class="form-control"
                                               placeholder="Enter email addresses separated by commas"
@@ -354,16 +409,18 @@ $userCount = $stmt->fetch()['count'];
 
         function toggleRecipientInput() {
             const recipientType = document.querySelector('input[name="recipient_type"]:checked').value;
-            const recipientInput = document.getElementById('recipientInput');
-            const sendToAll = document.getElementById('sendToAll');
-            
-            if (recipientType === 'specific') {
-                recipientInput.style.display = 'block';
-                sendToAll.value = '';
+            const selectedUsersInput = document.getElementById('selectedUsersInput');
+            const customEmailInput = document.getElementById('customEmailInput');
+
+            selectedUsersInput.style.display = 'none';
+            customEmailInput.style.display = 'none';
+
+            if (recipientType === 'selected') {
+                selectedUsersInput.style.display = 'block';
+            } else if (recipientType === 'custom') {
+                customEmailInput.style.display = 'block';
                 document.getElementById('recipients').required = true;
             } else {
-                recipientInput.style.display = 'none';
-                sendToAll.value = '1';
                 document.getElementById('recipients').required = false;
             }
         }

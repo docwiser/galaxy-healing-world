@@ -434,12 +434,32 @@ $categories = $stmt->fetchAll();
                         <h4>Address Information</h4>
                         <div class="detail-grid">
                             <div class="detail-item">
-                                <label>State:</label>
-                                <span>${user.state || 'Not specified'}</span>
+                                <label>House Number/Building:</label>
+                                <span>${user.house_number || 'Not specified'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Street/Locality:</label>
+                                <span>${user.street_locality || 'Not specified'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>PIN Code:</label>
+                                <span>${user.pincode || 'Not specified'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Area/Village:</label>
+                                <span>${user.area_village || 'Not specified'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>City:</label>
+                                <span>${user.city || 'Not specified'}</span>
                             </div>
                             <div class="detail-item">
                                 <label>District:</label>
                                 <span>${user.district || 'Not specified'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>State:</label>
+                                <span>${user.state || 'Not specified'}</span>
                             </div>
                             <div class="detail-item full-width">
                                 <label>Complete Address:</label>
@@ -447,6 +467,22 @@ $categories = $stmt->fetchAll();
                             </div>
                         </div>
                     </div>
+
+                    ${user.voice_recording_path ? `
+                    <div class="detail-section">
+                        <h4>Voice Recording</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item full-width">
+                                <label>User's Issue Recording:</label>
+                                <audio controls style="width: 100%; max-width: 500px; margin-top: 8px;">
+                                    <source src="${user.voice_recording_path}" type="audio/webm">
+                                    <source src="${user.voice_recording_path}" type="audio/mpeg">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
                     
                     ${user.attendant !== 'self' ? `
                     <div class="detail-section">
