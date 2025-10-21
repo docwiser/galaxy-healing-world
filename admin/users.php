@@ -159,6 +159,10 @@ $categories = $stmt->fetchAll();
                 <div class="table-container">
                     <div class="table-header">
                         <h3>Users (<?php echo number_format($total_users); ?> total)</h3>
+                        <button type="button" class="btn btn-primary" onclick="exportToCSV()" aria-label="Export users to CSV">
+                            <i data-feather="download" aria-hidden="true"></i>
+                            Export to CSV
+                        </button>
                     </div>
                     
                     <?php if (empty($users)): ?>
@@ -640,6 +644,49 @@ $categories = $stmt->fetchAll();
                 closeDeleteModal();
             }
         });
+
+        // Export to CSV functionality
+        function exportToCSV() {
+            const btn = event.target.closest('button');
+            const originalHTML = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i data-feather="loader"></i> Exporting...';
+            ;
+
+            fetch('api/export-users.php<?php echo isset($_GET["search"]) || isset($_GET["status"]) ? "?" . http_build_query($_GET) : ""; ?>')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Export failed');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    const timestamp = new Date().toISOString().slice(0, 10);
+                    a.download = `users_export_${timestamp}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    ;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error exporting users. Please try again.');
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    ;
+                });
+        }
+
+        ;
     </script>
 </body>
 </html>

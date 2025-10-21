@@ -76,6 +76,13 @@ function prefillForm(data) {
     document.getElementById('dob').value = data.dob || '';
     document.getElementById('how_learned').value = data.how_learned || '';
 
+    // Set mobile number radio as default for verified users
+    const phoneRadio = document.querySelector('input[name="verify_method"][value="phone"]');
+    if (phoneRadio) {
+        phoneRadio.checked = true;
+        updateVerificationLabel();
+    }
+
     // For verified users, prefill new address fields
     if (data.house_number) document.getElementById('house_number').value = data.house_number;
     if (data.street_locality) document.getElementById('street_locality').value = data.street_locality;
@@ -241,7 +248,10 @@ document.getElementById('mainBookingForm').addEventListener('submit', async (e) 
         if (result.success) {
             showMessage(messageDiv, 'Session booked successfully! You will receive an email with payment details shortly.', 'success');
             e.target.reset();
-            
+
+            // Clear audio recording
+            clearAudioRecording();
+
             // Hide all conditional sections
             document.getElementById('attendant-info').classList.add('hidden');
             document.getElementById('disability-info').classList.add('hidden');
@@ -534,6 +544,35 @@ function discardRecording() {
     document.getElementById('recording-complete').classList.add('hidden');
     document.getElementById('audioPlayback').src = '';
     audioChunks = [];
+}
+
+function clearAudioRecording() {
+    // Clear the uploaded file path
+    document.getElementById('voice_recording_path').value = '';
+
+    // Reset UI
+    document.getElementById('startRecording').classList.remove('hidden');
+    document.getElementById('recording-active').classList.add('hidden');
+    document.getElementById('recording-complete').classList.add('hidden');
+    document.getElementById('audioPlayback').src = '';
+    document.getElementById('recording-timer').textContent = '00:00';
+    document.getElementById('pauseRecording').textContent = 'Pause';
+
+    // Clear recording data
+    audioChunks = [];
+
+    // Stop any active recording
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        mediaRecorder = null;
+    }
+
+    // Clear timer
+    if (recordingTimer) {
+        clearInterval(recordingTimer);
+        recordingTimer = null;
+    }
 }
 
 function updateRecordingTimer() {

@@ -168,7 +168,6 @@ $databaseSettings = Config::get('database');
                 <?php endif; ?>
 
                 <!-- Settings Navigation -->
-<!--
                 <div class="settings-nav" role="tablist" aria-label="Settings sections">
                     <button type="button" class="settings-tab active" onclick="showTab(event, 'site')" role="tab" aria-controls="site-settings" aria-selected="true" id="site-tab">
                         <i data-feather="globe" aria-hidden="true"></i>
@@ -191,6 +190,7 @@ $databaseSettings = Config::get('database');
                         Security
                     </button>
                 </div>
+
                 <!-- Site Settings -->
                 <div id="site-settings" class="settings-panel active" role="tabpanel" aria-labelledby="site-tab" tabindex="0">
                     <div class="form-section">
@@ -249,7 +249,7 @@ $databaseSettings = Config::get('database');
                 </div>
 
                 <!-- Email Settings -->
-                <div id="email-settings" class="settings-panel active" role="tabpanel" aria-labelledby="email-tab" tabindex="0">
+                <div id="email-settings" class="settings-panel" role="tabpanel" aria-labelledby="email-tab" aria-hidden="true" tabindex="0">
                     <div class="form-section">
                         <h3>SMTP Configuration</h3>
                         <form method="POST">
@@ -326,7 +326,7 @@ $databaseSettings = Config::get('database');
                 </div>
 
                 <!-- Payment Settings -->
-                <div id="payment-settings" class="settings-panel active" role="tabpanel" aria-labelledby="payment-tab" tabindex="0">
+                <div id="payment-settings" class="settings-panel" role="tabpanel" aria-labelledby="payment-tab" aria-hidden="true" tabindex="0">
                     <div class="form-section">
                         <h3>Payment Configuration</h3>
                         <form method="POST">
@@ -381,7 +381,7 @@ $databaseSettings = Config::get('database');
                 </div>
 
                 <!-- Database Settings -->
-                <div id="database-settings" class="settings-panel active" role="tabpanel" aria-labelledby="database-tab" tabindex="0">
+                <div id="database-settings" class="settings-panel" role="tabpanel" aria-labelledby="database-tab" aria-hidden="true" tabindex="0">
                     <div class="form-section">
                         <h3>Database Configuration</h3>
                         <div class="current-db-info">
@@ -435,24 +435,24 @@ $databaseSettings = Config::get('database');
                                     <div class="form-group">
                                         <label for="mysql_host">MySQL Host</label>
                                         <input type="text" id="mysql_host" name="mysql_host" class="form-control"
-                                               value="<?php echo htmlspecialchars(($databaseSettings['mysql'] ?? [])['host'] ?? 'localhost'); ?>">
+                                               value="<?php echo htmlspecialchars($databaseSettings['mysql']['host'] ?? 'localhost'); ?>">
                                     </div>
                                     <div class="form-group">
                                         <label for="mysql_database">Database Name</label>
                                         <input type="text" id="mysql_database" name="mysql_database" class="form-control"
-                                               value="<?php echo htmlspecialchars(($databaseSettings['mysql'] ?? [])['database'] ?? ''); ?>">
+                                               value="<?php echo htmlspecialchars($databaseSettings['mysql']['database'] ?? ''); ?>">
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="mysql_username">Username</label>
                                         <input type="text" id="mysql_username" name="mysql_username" class="form-control"
-                                               value="<?php echo htmlspecialchars(($databaseSettings['mysql'] ?? [])['username'] ?? ''); ?>">
+                                               value="<?php echo htmlspecialchars($databaseSettings['mysql']['username'] ?? ''); ?>">
                                     </div>
                                     <div class="form-group">
                                         <label for="mysql_password">Password</label>
                                         <input type="password" id="mysql_password" name="mysql_password" class="form-control"
-                                               value="<?php echo htmlspecialchars(($databaseSettings['mysql'] ?? [])['password'] ?? ''); ?>">
+                                               value="<?php echo htmlspecialchars($databaseSettings['mysql']['password'] ?? ''); ?>">
                                     </div>
                                 </div>
                             </div>
@@ -474,7 +474,7 @@ $databaseSettings = Config::get('database');
                 </div>
 
                 <!-- Security Settings -->
-                <div id="security-settings" class="settings-panel active" role="tabpanel" aria-labelledby="security-tab" tabindex="0">
+                <div id="security-settings" class="settings-panel" role="tabpanel" aria-labelledby="security-tab" aria-hidden="true" tabindex="0">
                     <div class="form-section">
                         <h3>Change Password</h3>
                         <form method="POST">
