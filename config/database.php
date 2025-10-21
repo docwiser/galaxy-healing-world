@@ -75,6 +75,7 @@ class Database {
                 disability_percentage INTEGER,
                 disability_documents TEXT,
                 status VARCHAR(50) DEFAULT 'first-time',
+                payment_made DECIMAL(10, 2) DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
@@ -112,7 +113,7 @@ class Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
 
-            // Agent forms table (for multi-page form progress)
+            // Agent forms table
             "CREATE TABLE IF NOT EXISTS agent_forms (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -153,6 +154,30 @@ class Database {
                 setting_key VARCHAR(100) UNIQUE NOT NULL,
                 setting_value TEXT,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+
+            // Coupons table
+            "CREATE TABLE IF NOT EXISTS coupons (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code VARCHAR(255) UNIQUE NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                value DECIMAL(10, 2) NOT NULL,
+                is_active TINYINT DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+
+            // Payments table
+            "CREATE TABLE IF NOT EXISTS payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                order_id VARCHAR(255) NOT NULL,
+                payment_id VARCHAR(255),
+                amount DECIMAL(10, 2) NOT NULL,
+                coupon_id INTEGER,
+                status VARCHAR(50) DEFAULT 'created',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (coupon_id) REFERENCES coupons(id)
             )"
         ];
     }
@@ -188,6 +213,7 @@ class Database {
                 disability_percentage INT,
                 disability_documents TEXT,
                 status VARCHAR(50) DEFAULT 'first-time',
+                payment_made DECIMAL(10, 2) DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
@@ -266,6 +292,30 @@ class Database {
                 setting_key VARCHAR(100) UNIQUE NOT NULL,
                 setting_value TEXT,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+            // Coupons table
+            "CREATE TABLE IF NOT EXISTS coupons (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(255) UNIQUE NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                value DECIMAL(10, 2) NOT NULL,
+                is_active TINYINT DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+            // Payments table
+            "CREATE TABLE IF NOT EXISTS payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                order_id VARCHAR(255) NOT NULL,
+                payment_id VARCHAR(255),
+                amount DECIMAL(10, 2) NOT NULL,
+                coupon_id INT,
+                status VARCHAR(50) DEFAULT 'created',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (coupon_id) REFERENCES coupons(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         ];
     }
@@ -305,7 +355,7 @@ class Database {
     }
 
     private function getAllSQLiteData() {
-        $tables = ['users', 'sessions', 'categories', 'agent_forms', 'email_logs', 'admin_users', 'system_settings'];
+        $tables = ['users', 'sessions', 'categories', 'agent_forms', 'email_logs', 'admin_users', 'system_settings', 'coupons', 'payments'];
         $data = [];
         
         foreach ($tables as $table) {
@@ -323,7 +373,7 @@ class Database {
             if (empty($rows)) continue;
             
             $columns = array_keys($rows[0]);
-            $placeholders = str_repeat('?,', count($columns) - 1) . '?';
+            $placeholders = str_repeat('?,'- 1) . '?';
             
             $sql = "INSERT IGNORE INTO $table (" . implode(',', $columns) . ") VALUES ($placeholders)";
             $stmt = $pdo->prepare($sql);

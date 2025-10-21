@@ -180,6 +180,7 @@ $categories = $stmt->fetchAll();
                                         <th scope="col">Name</th>
                                         <th scope="col">Contact</th>
                                         <th scope="col">Age</th>
+                                        <th scope="col">Payment</th>
                                         <th scope="col">Status</th>
                                         <th scope="col">Registered</th>
                                         <th scope="col" aria-label="Actions">Actions</th>
@@ -212,6 +213,13 @@ $categories = $stmt->fetchAll();
                                                     <?php echo $user['age']; ?> years
                                                 <?php else: ?>
                                                     <span class="text-muted">Not specified</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($user['payment_made'] > 0): ?>
+                                                    <span class="payment-badge">₹<?php echo htmlspecialchars($user['payment_made']); ?></span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">No Payment</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
@@ -380,6 +388,7 @@ $categories = $stmt->fetchAll();
 
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
+        feather.replace();
 
         function viewUser(userId) {
             fetch(`api/get-user.php?id=${userId}`)
@@ -430,6 +439,10 @@ $categories = $stmt->fetchAll();
                             <div class="detail-item">
                                 <label>Date of Birth:</label>
                                 <span>${user.dob || 'Not specified'}</span>
+                            </div>
+                             <div class="detail-item">
+                                <label>Payment Made:</label>
+                                <span>₹${user.payment_made || '0'}</span>
                             </div>
                         </div>
                     </div>
@@ -588,6 +601,7 @@ $categories = $stmt->fetchAll();
             // Show loading state
             confirmBtn.disabled = true;
             confirmBtn.innerHTML = '<i data-feather="loader"></i> Deleting...';
+            feather.replace();
             
             fetch('/admin/api/delete-user.php', {
                 method: 'POST',
@@ -609,6 +623,7 @@ $categories = $stmt->fetchAll();
                     alert('Error deleting user: ' + (data.message || 'Unknown error'));
                     confirmBtn.disabled = false;
                     confirmBtn.innerHTML = originalText;
+                    feather.replace();
                 }
             })
             .catch(error => {
@@ -616,6 +631,7 @@ $categories = $stmt->fetchAll();
                 alert('Error deleting user: ' + error.message);
                 confirmBtn.disabled = false;
                 confirmBtn.innerHTML = originalText;
+                feather.replace();
             });
         }
 
@@ -652,7 +668,7 @@ $categories = $stmt->fetchAll();
 
             btn.disabled = true;
             btn.innerHTML = '<i data-feather="loader"></i> Exporting...';
-            ;
+            feather.replace();
 
             fetch('api/export-users.php<?php echo isset($_GET["search"]) || isset($_GET["status"]) ? "?" . http_build_query($_GET) : ""; ?>')
                 .then(response => {
@@ -675,18 +691,18 @@ $categories = $stmt->fetchAll();
 
                     btn.disabled = false;
                     btn.innerHTML = originalHTML;
-                    ;
+                    feather.replace();
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     alert('Error exporting users. Please try again.');
                     btn.disabled = false;
                     btn.innerHTML = originalHTML;
-                    ;
+                    feather.replace();
                 });
         }
 
-        ;
+        feather.replace();
     </script>
 </body>
 </html>

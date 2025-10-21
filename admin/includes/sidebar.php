@@ -30,6 +30,11 @@
             <i data-feather="tag"></i>
             Categories
         </a>
+
+        <a href="coupons.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'coupons.php' ? 'active' : ''; ?>">
+            <i data-feather="gift"></i>
+            Coupons
+        </a>
         
         <a href="email.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'email.php' ? 'active' : ''; ?>">
             <i data-feather="mail"></i>
