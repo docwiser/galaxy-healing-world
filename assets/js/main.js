@@ -226,46 +226,9 @@ function toggleDisabilityInfo() {
 }
 
 // Handle main booking form submission
-document.getElementById('mainBookingForm').addEventListener('submit', async (e) => {
+document.getElementById('mainBookingForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    
-    const formData = new FormData(e.target);
-    const messageDiv = document.getElementById('booking-message');
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    
-    // Disable submit button
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Booking...';
-    
-    try {
-        const response = await fetch('api/book-session.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            showMessage(messageDiv, 'Session booked successfully! You will receive an email with payment details shortly.', 'success');
-            e.target.reset();
-
-            // Clear audio recording
-            clearAudioRecording();
-
-            // Hide all conditional sections
-            document.getElementById('attendant-info').classList.add('hidden');
-            document.getElementById('disability-info').classList.add('hidden');
-            document.getElementById('age-input').classList.add('hidden');
-            document.getElementById('calculated-age').classList.add('hidden');
-        } else {
-            showMessage(messageDiv, result.message || 'Booking failed. Please try again.', 'error');
-        }
-    } catch (error) {
-        showMessage(messageDiv, 'Connection error. Please try again.', 'error');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Book Session';
-    }
+    showPrepayment();
 });
 
 // Utility function to show messages
@@ -589,6 +552,11 @@ function updateRecordingTimer() {
 document.addEventListener('DOMContentLoaded', function() {
     // Set up event listeners
     document.getElementById('dob').addEventListener('change', calculateAge);
+    document.getElementById('apply-coupon-btn').addEventListener('click', applyCoupon);
+    document.getElementById('remove-coupon-btn').addEventListener('click', removeCoupon);
+    document.getElementById('pay-now-btn').addEventListener('click', payNow);
+    document.getElementById('book-now-btn').addEventListener('click', () => bookNow(null));
+    document.getElementById('retry-payment-btn').addEventListener('click', retryPayment);
 
     // Initialize client ID generation for new users
     if (!isVerified) {
@@ -639,4 +607,167 @@ function updateVerificationLabel() {
             input.placeholder = 'Enter your verification details';
             input.type = 'text';
     }
+}
+
+// Payment Flow Logic
+let firstSessionAmount = 500; // This can be fetched from config later
+let discount = 0;
+let couponCode = null;
+
+function showPrepayment() {
+    // Basic validation
+    if (!document.getElementById('name').value || !document.getElementById('mobile').value || !document.getElementById('email').value) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    document.getElementById('booking-flow').classList.add('hidden');
+    document.getElementById('prepayment-summary').classList.remove('hidden');
+
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const mobile = document.getElementById('mobile').value;
+
+    const paymentDetails = `
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Mobile:</strong> ${mobile}</p>
+    `;
+    document.getElementById('payment-details').innerHTML = paymentDetails;
+
+    document.getElementById('subtotal').innerText = firstSessionAmount;
+    document.getElementById('total-amount').innerText = firstSessionAmount;
+}
+
+async function applyCoupon() {
+    couponCode = document.getElementById('coupon-code').value;
+    if (!couponCode) {
+        alert('Please enter a coupon code.');
+        return;
+    }
+
+    const response = await fetch('api/validate-coupon.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coupon_code: couponCode, amount: firstSessionAmount })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        discount = data.discount;
+        document.getElementById('discount').innerText = discount;
+        updateTotal();
+        document.getElementById('coupon-code').disabled = true;
+        document.getElementById('apply-coupon-btn').classList.add('hidden');
+        document.getElementById('remove-coupon-btn').classList.remove('hidden');
+    } else {
+        alert(data.message);
+    }
+}
+
+function removeCoupon() {
+    discount = 0;
+    couponCode = null;
+    document.getElementById('discount').innerText = discount;
+    updateTotal();
+    document.getElementById('coupon-code').value = '';
+    document.getElementById('coupon-code').disabled = false;
+    document.getElementById('apply-coupon-btn').classList.remove('hidden');
+    document.getElementById('remove-coupon-btn').classList.add('hidden');
+}
+
+function updateTotal() {
+    const total = firstSessionAmount - discount;
+    document.getElementById('total-amount').innerText = total;
+
+    if (total <= 0) {
+        document.getElementById('pay-now-btn').classList.add('hidden');
+        document.getElementById('book-now-btn').classList.remove('hidden');
+    } else {
+        document.getElementById('pay-now-btn').classList.remove('hidden');
+        document.getElementById('book-now-btn').classList.add('hidden');
+    }
+}
+
+async function payNow() {
+    const totalAmount = firstSessionAmount - discount;
+
+    const response = await fetch('api/create-order.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            amount: firstSessionAmount,
+            user_id: userData ? userData.id : null, // Pass user ID if available
+            coupon_code: couponCode
+        })
+    });
+
+    const data = await response.json();
+
+    if (data.success && data.order_id) {
+        const options = {
+            key: 'YOUR_RAZORPAY_KEY_ID', // Replace with your key
+            amount: data.amount * 100,
+            currency: 'INR',
+            name: 'Galaxy Healing World',
+            description: 'First Session Booking',
+            order_id: data.order_id,
+            handler: function (response) {
+                // Payment successful
+                bookNow(response.razorpay_payment_id);
+            },
+            prefill: {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                contact: document.getElementById('mobile').value
+            },
+            theme: {
+                color: '#667eea'
+            }
+        };
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (response) {
+            showPaymentFailed();
+        });
+        rzp.open();
+    } else {
+        alert('Could not create order. Please try again.');
+    }
+}
+
+async function bookNow(paymentId = null) {
+    const formData = new FormData(document.getElementById('mainBookingForm'));
+    if (paymentId) {
+        formData.append('payment_id', paymentId);
+    }
+    formData.append('payment_made', firstSessionAmount - discount);
+
+    const response = await fetch('api/book-session.php', {
+        method: 'POST',
+        body: formData
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        showPaymentSuccess();
+    } else {
+        alert('Booking failed: ' + data.message);
+    }
+}
+
+function showPaymentSuccess() {
+    document.getElementById('prepayment-summary').classList.add('hidden');
+    document.getElementById('payment-success').classList.remove('hidden');
+}
+
+function showPaymentFailed() {
+    document.getElementById('prepayment-summary').classList.add('hidden');
+    document.getElementById('payment-failed').classList.remove('hidden');
+}
+
+function retryPayment() {
+    document.getElementById('payment-failed').classList.add('hidden');
+    document.getElementById('prepayment-summary').classList.remove('hidden');
 }
