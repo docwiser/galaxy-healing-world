@@ -26,8 +26,42 @@ try {
 
     $data = json_decode(file_get_contents('php://input'), true);
 
-    $amount = $data['amount'] ?? 0;
     $userId = $data['user_id'] ?? null;
+
+    // If no user ID is provided, find or create a user
+    if (empty($userId)) {
+        $email = $data['email'] ?? '';
+        $mobile = $data['mobile'] ?? '';
+        $name = $data['name'] ?? '';
+
+        if (empty($name) || empty($email) || empty($mobile)) {
+            echo json_encode(['success' => false, 'message' => 'User details are required to create a payment order.']);
+            exit;
+        }
+
+        // Check for an existing user
+        $stmt = $db->prepare("SELECT id FROM users WHERE email = ? OR mobile = ?");
+        $stmt->execute([$email, $mobile]);
+        $existingUser = $stmt->fetch();
+
+        if ($existingUser) {
+            $userId = $existingUser['id'];
+        } else {
+            // Create a preliminary user record
+            $client_id = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $name), 0, 4)) . substr($mobile, -4);
+            
+            $stmt = $db->prepare("INSERT INTO users (name, email, mobile, client_id, status) VALUES (?, ?, ?, ?, 'pending-payment')");
+            $stmt->execute([$name, $email, $mobile, $client_id]);
+            $userId = $db->lastInsertId();
+        }
+    }
+
+    if (empty($userId)) {
+        echo json_encode(['success' => false, 'message' => 'Could not establish a user for the booking.']);
+        exit;
+    }
+    
+    $amount = $data['amount'] ?? 0;
     $couponCode = $data['coupon_code'] ?? null;
 
     if ($amount <= 0) {
@@ -56,8 +90,7 @@ try {
     $totalAmount = $amount - $discount;
 
     if ($totalAmount <= 0) {
-        // Free booking
-        echo json_encode(['success' => true, 'order_id' => null, 'amount' => 0]);
+        echo json_encode(['success' => true, 'order_id' => null, 'amount' => 0, 'user_id' => $userId]);
         exit;
     }
 
@@ -73,10 +106,9 @@ try {
     $stmt = $db->prepare("INSERT INTO payments (user_id, order_id, amount, coupon_id, status) VALUES (?, ?, ?, ?, 'created')");
     $stmt->execute([$userId, $razorpayOrder['id'], $totalAmount, $couponId]);
 
-    echo json_encode(['success' => true, 'order_id' => $razorpayOrder['id'], 'amount' => $totalAmount]);
+    echo json_encode(['success' => true, 'order_id' => $razorpayOrder['id'], 'amount' => $totalAmount, 'user_id' => $userId]);
 
 } catch (Exception $e) {
-    // Catch any other exceptions (e.g., from Razorpay API)
     echo json_encode(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()]);
     exit;
 }

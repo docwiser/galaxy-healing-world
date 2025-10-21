@@ -694,55 +694,70 @@ function updateTotal() {
 async function payNow() {
     const totalAmount = firstSessionAmount - discount;
 
+    const orderData = {
+        amount: firstSessionAmount,
+        coupon_code: couponCode,
+    };
+
+    if (userData && userData.id) {
+        orderData.user_id = userData.id;
+    } else {
+        orderData.name = document.getElementById('name').value;
+        orderData.email = document.getElementById('email').value;
+        orderData.mobile = document.getElementById('mobile').value;
+    }
+
     const response = await fetch('api/create-order.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            amount: firstSessionAmount,
-            user_id: userData ? userData.id : null, // Pass user ID if available
-            coupon_code: couponCode
-        })
+        body: JSON.stringify(orderData)
     });
 
     const data = await response.json();
 
-    if (data.success && data.order_id) {
-        const options = {
-            key: 'YOUR_RAZORPAY_KEY_ID', // Replace with your key
-            amount: data.amount * 100,
-            currency: 'INR',
-            name: 'Galaxy Healing World',
-            description: 'First Session Booking',
-            order_id: data.order_id,
-            handler: function (response) {
-                // Payment successful
-                bookNow(response.razorpay_payment_id);
-            },
-            prefill: {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                contact: document.getElementById('mobile').value
-            },
-            theme: {
-                color: '#667eea'
-            }
-        };
-        const rzp = new Razorpay(options);
-        rzp.on('payment.failed', function (response) {
-            showPaymentFailed();
-        });
-        rzp.open();
+    if (data.success) {
+        if (data.order_id) {
+            // Payment required
+            const options = {
+                key: 'YOUR_RAZORPAY_KEY_ID', // Replace with your key
+                amount: data.amount * 100,
+                currency: 'INR',
+                name: 'Galaxy Healing World',
+                description: 'First Session Booking',
+                order_id: data.order_id,
+                handler: function (response) {
+                    bookNow(data.user_id, response.razorpay_payment_id);
+                },
+                prefill: {
+                    name: document.getElementById('name').value,
+                    email: document.getElementById('email').value,
+                    contact: document.getElementById('mobile').value
+                },
+                theme: {
+                    color: '#667eea'
+                }
+            };
+            const rzp = new Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                showPaymentFailed();
+            });
+            rzp.open();
+        } else {
+            // Free booking
+            bookNow(data.user_id, null);
+        }
     } else {
         alert('Could not create order: ' + data.message);
     }
 }
 
-async function bookNow(paymentId = null) {
+async function bookNow(userId, paymentId = null) {
     const formData = new FormData(document.getElementById('mainBookingForm'));
     if (paymentId) {
         formData.append('payment_id', paymentId);
     }
     formData.append('payment_made', firstSessionAmount - discount);
+    formData.append('user_id', userId);
 
     const response = await fetch('api/book-session.php', {
         method: 'POST',
