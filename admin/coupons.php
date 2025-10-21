@@ -1,6 +1,12 @@
 <?php
-require_once __DIR__ . '/includes/header.php';
-require_once __DIR__ . '/../config/database.php';
+session_start();
+require_once '../config/config.php';
+require_once '../config/database.php';
+
+if (!isset($_SESSION['admin_logged_in'])) {
+    header('Location: login.php');
+    exit;
+}
 
 $db = Database::getInstance()->getConnection();
 
@@ -34,100 +40,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAll();
 ?>
 
-<div class="content-wrapper">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Coupon Management</h3>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coupon Management - <?php echo Config::get('site.name'); ?></title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <?php include 'includes/sidebar.php'; ?>
+        
+        <div class="admin-content">
+            <?php include 'includes/header.php'; ?>
+            
+            <main class="main-content">
+                <div class="page-header">
+                    <h1>Coupon Management</h1>
+                    <p>Create, edit, and manage promotional coupons</p>
                 </div>
-                <div class="card-body">
-                    <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#addCouponModal">Add New Coupon</button>
 
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Code</th>
-                                <th>Type</th>
-                                <th>Value</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($coupons as $coupon): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($coupon['code']) ?></td>
-                                    <td><?= htmlspecialchars($coupon['type']) ?></td>
-                                    <td><?= htmlspecialchars($coupon['value']) ?><?= ($coupon['type'] === 'percentage') ? '%' : '' ?></td>
-                                    <td><span class="badge badge-<?= $coupon['is_active'] ? 'success' : 'danger' ?>"><?= $coupon['is_active'] ? 'Active' : 'Inactive' ?></span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#editCouponModal" data-id="<?= $coupon['id'] ?>" data-code="<?= htmlspecialchars($coupon['code']) ?>" data-type="<?= $coupon['type'] ?>" data-value="<?= $coupon['value'] ?>" data-is_active="<?= $coupon['is_active'] ?>">Edit</button>
-                                        <form method="POST" style="display: inline-block;">
-                                            <input type="hidden" name="id" value="<?= $coupon['id'] ?>">
-                                            <button type="submit" name="delete_coupon" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this coupon?')">Delete</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                <div class="card">
+                    <div class="card-header">
+                        <button class="btn btn-primary" onclick="openAddModal()">Add New Coupon</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Type</th>
+                                        <th>Value</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($coupons as $coupon): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($coupon['code']) ?></td>
+                                            <td><?= htmlspecialchars($coupon['type']) ?></td>
+                                            <td><?= htmlspecialchars($coupon['value']) ?><?= ($coupon['type'] === 'percentage') ? '%' : '' ?></td>
+                                            <td><span class="badge badge-<?= $coupon['is_active'] ? 'success' : 'danger' ?>"><?= $coupon['is_active'] ? 'Active' : 'Inactive' ?></span></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info" onclick="openEditModal(<?= htmlspecialchars(json_encode($coupon)) ?>)">Edit</button>
+                                                <form method="POST" style="display: inline-block;">
+                                                    <input type="hidden" name="id" value="<?= $coupon['id'] ?>">
+                                                    <button type="submit" name="delete_coupon" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this coupon?')">Delete</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
-</div>
 
-<!-- Add Coupon Modal -->
-<div class="modal fade" id="addCouponModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
+    <!-- Add/Edit Coupon Modal -->
+    <div id="couponModal" class="modal" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add New Coupon</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form method="POST">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="code">Coupon Code</label>
-                        <input type="text" name="code" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="type">Type</label>
-                        <select name="type" class="form-control">
-                            <option value="fixed">Fixed Amount</option>
-                            <option value="percentage">Percentage</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="value">Value</label>
-                        <input type="number" name="value" class="form-control" step="0.01" required>
-                    </div>
-                    <div class="form-check">
-                        <input type="checkbox" name="is_active" class="form-check-input" id="is_active_add" value="1" checked>
-                        <label class="form-check-label" for="is_active_add">Active</label>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" name="add_coupon" class="btn btn-primary">Add Coupon</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Coupon Modal -->
-<div class="modal fade" id="editCouponModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Coupon</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <h5 class="modal-title" id="couponModalTitle">Add New Coupon</h5>
+                <button type="button" class="close" onclick="closeModal()">&times;</button>
             </div>
             <form method="POST">
                 <input type="hidden" name="id" id="edit_id">
@@ -153,31 +135,45 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" name="edit_coupon" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+                    <button type="submit" name="add_coupon" id="addCouponBtn" class="btn btn-primary">Add Coupon</button>
+                    <button type="submit" name="edit_coupon" id="editCouponBtn" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
-</div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
+    <script>
+        feather.replace();
 
-<script>
-$('#editCouponModal').on('show.bs.modal', function (event) {
-    var button = $(event.relatedTarget); 
-    var id = button.data('id');
-    var code = button.data('code');
-    var type = button.data('type');
-    var value = button.data('value');
-    var isActive = button.data('is_active');
+        function openAddModal() {
+            document.getElementById('couponModalTitle').innerText = 'Add New Coupon';
+            document.getElementById('edit_id').value = '';
+            document.getElementById('edit_code').value = '';
+            document.getElementById('edit_type').value = 'fixed';
+            document.getElementById('edit_value').value = '';
+            document.getElementById('edit_is_active').checked = true;
+            document.getElementById('addCouponBtn').style.display = 'inline-block';
+            document.getElementById('editCouponBtn').style.display = 'none';
+            document.getElementById('couponModal').style.display = 'block';
+        }
 
-    var modal = $(this);
-    modal.find('.modal-title').text('Edit Coupon: ' + code);
-    modal.find('#edit_id').val(id);
-    modal.find('#edit_code').val(code);
-    modal.find('#edit_type').val(type);
-    modal.find('#edit_value').val(value);
-    modal.find('#edit_is_active').prop('checked', isActive);
-});
-</script>
+        function openEditModal(coupon) {
+            document.getElementById('couponModalTitle').innerText = 'Edit Coupon';
+            document.getElementById('edit_id').value = coupon.id;
+            document.getElementById('edit_code').value = coupon.code;
+            document.getElementById('edit_type').value = coupon.type;
+            document.getElementById('edit_value').value = coupon.value;
+            document.getElementById('edit_is_active').checked = coupon.is_active;
+            document.getElementById('addCouponBtn').style.display = 'none';
+            document.getElementById('editCouponBtn').style.display = 'inline-block';
+            document.getElementById('couponModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('couponModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

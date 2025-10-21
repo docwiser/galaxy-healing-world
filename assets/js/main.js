@@ -635,8 +635,9 @@ function showPrepayment() {
     `;
     document.getElementById('payment-details').innerHTML = paymentDetails;
 
-    document.getElementById('subtotal').innerText = firstSessionAmount;
-    document.getElementById('total-amount').innerText = firstSessionAmount;
+    document.getElementById('subtotal').innerText = '₹' + firstSessionAmount;
+    document.getElementById('total-amount').innerText = '₹' + firstSessionAmount;
+    document.getElementById('discount').innerText = '₹' + discount;
 }
 
 async function applyCoupon() {
@@ -656,7 +657,7 @@ async function applyCoupon() {
 
     if (data.success) {
         discount = data.discount;
-        document.getElementById('discount').innerText = discount;
+        document.getElementById('discount').innerText = '₹' + discount;
         updateTotal();
         document.getElementById('coupon-code').disabled = true;
         document.getElementById('apply-coupon-btn').classList.add('hidden');
@@ -669,7 +670,7 @@ async function applyCoupon() {
 function removeCoupon() {
     discount = 0;
     couponCode = null;
-    document.getElementById('discount').innerText = discount;
+    document.getElementById('discount').innerText = '₹' + discount;
     updateTotal();
     document.getElementById('coupon-code').value = '';
     document.getElementById('coupon-code').disabled = false;
@@ -679,7 +680,7 @@ function removeCoupon() {
 
 function updateTotal() {
     const total = firstSessionAmount - discount;
-    document.getElementById('total-amount').innerText = total;
+    document.getElementById('total-amount').innerText = '₹' + total;
 
     if (total <= 0) {
         document.getElementById('pay-now-btn').classList.add('hidden');
@@ -732,7 +733,7 @@ async function payNow() {
         });
         rzp.open();
     } else {
-        alert('Could not create order. Please try again.');
+        alert('Could not create order: ' + data.message);
     }
 }
 
