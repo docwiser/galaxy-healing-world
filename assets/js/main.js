@@ -161,8 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // **CORRECTED**: Using the local API path.
-        const couponApiUrl = 'api/validate_coupon.php';
+        const couponApiUrl = 'api/validate-coupons.php';
 
         applyCouponBtn.textContent = 'Applying...';
         applyCouponBtn.disabled = true;
@@ -172,14 +171,13 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ coupon_code: couponCode })
+            body: JSON.stringify({ coupon_code: couponCode, amount: currentSubtotal })
         })
         .then(response => response.json())
         .then(data => {
-            if (data && data.valid && data.discount_percentage) {
-                const discountPercentage = parseFloat(data.discount_percentage);
-                currentDiscount = currentSubtotal * (discountPercentage / 100);
-                alert(`Coupon "${couponCode}" applied! You get a ${discountPercentage}% discount.`);
+            if (data && data.success) {
+                currentDiscount = parseFloat(data.discount);
+                alert(`Coupon "${couponCode}" applied!`);
             } else {
                 currentDiscount = 0;
                 alert(data.message || 'Invalid or expired coupon code.');
@@ -233,7 +231,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function triggerRazorpay() {
         if (currentTotal <= 0) return;
 
-        // **CRITICAL**: You MUST replace "YOUR_KEY_ID" with your actual Razorpay Key ID.
+        payNowBtn.disabled = true;
+        payNowBtn.textContent = 'Processing...';
+
         const options = {
             key: "YOUR_KEY_ID", 
             amount: currentTotal * 100,
@@ -243,6 +243,8 @@ document.addEventListener('DOMContentLoaded', function() {
             image: "https://www.galaxyhealingworld.com/assets/images/logo.png",
             handler: function (response){
                 console.log('Payment successful:', response);
+                payNowBtn.disabled = false;
+                payNowBtn.textContent = 'Pay Now';
                 showSuccess();
             },
             prefill: {
@@ -256,6 +258,8 @@ document.addEventListener('DOMContentLoaded', function() {
             modal: {
                 ondismiss: function(){
                     console.log('Payment modal dismissed.');
+                    payNowBtn.disabled = false;
+                    payNowBtn.textContent = 'Pay Now';
                     showFailure();
                 }
             }
