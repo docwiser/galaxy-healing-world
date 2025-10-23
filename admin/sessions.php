@@ -324,6 +324,7 @@ $sessions = $stmt->fetchAll();
                         displaySessionView(data.session);
                         document.getElementById('sessionModal').classList.add('active');
                         document.getElementById('sessionModal').setAttribute('aria-hidden', 'false');
+                        document.querySelector('#sessionModal .modal-close').focus();
                     } else {
                         alert('Error loading session details');
                     }
@@ -342,6 +343,7 @@ $sessions = $stmt->fetchAll();
                         displaySessionForm(data.session);
                         document.getElementById('sessionModal').classList.add('active');
                         document.getElementById('sessionModal').setAttribute('aria-hidden', 'false');
+                        document.querySelector('#sessionModal .modal-close').focus();
                     } else {
                         alert('Error loading session details');
                     }

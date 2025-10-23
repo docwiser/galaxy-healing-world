@@ -258,6 +258,13 @@
                                 <small>Accepted formats: PDF, JPG, JPEG, PNG</small>
                             </div>
                         </fieldset>
+                        
+                        <!-- Query Section -->
+                        <fieldset class="section">
+                            <legend>Your Query</legend>
+                            <p>Please describe your issue or what you'd like to discuss.</p>
+                            <textarea id="query_text" name="query_text" rows="4" cols="50" placeholder="Enter your query here..."></textarea>
+                        </fieldset>
 
                         <!-- Voice Recording Section -->
                         <fieldset class="section">

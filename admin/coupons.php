@@ -109,7 +109,7 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="couponModalTitle">Add New Coupon</h5>
-                <button type="button" class="close" onclick="closeModal()">&times;</button>
+                <button type="button" class="close" onclick="closeModal()" aria-label="Close">&times;</button>
             </div>
             <form method="POST">
                 <input type="hidden" name="id" id="edit_id">
@@ -157,6 +157,7 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
             document.getElementById('addCouponBtn').style.display = 'inline-block';
             document.getElementById('editCouponBtn').style.display = 'none';
             document.getElementById('couponModal').style.display = 'block';
+            document.querySelector('#couponModal .close').focus();
         }
 
         function openEditModal(coupon) {
@@ -169,6 +170,7 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
             document.getElementById('addCouponBtn').style.display = 'none';
             document.getElementById('editCouponBtn').style.display = 'inline-block';
             document.getElementById('couponModal').style.display = 'block';
+            document.querySelector('#couponModal .close').focus();
         }
 
         function closeModal() {

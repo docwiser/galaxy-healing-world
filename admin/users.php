@@ -398,7 +398,7 @@ $categories = $stmt->fetchAll();
                         displayUserDetails(data.user);
                         document.getElementById('userModal').classList.add('active');
                         document.getElementById('userModal').setAttribute('aria-hidden', 'false');
-                        document.querySelector('.modal-close').focus();
+                        document.querySelector('#userModal .modal-close').focus();
                     } else {
                         alert('Error loading user details');
                     }
@@ -563,7 +563,7 @@ $categories = $stmt->fetchAll();
             document.getElementById('statusSelect').value = currentStatus;
             document.getElementById('statusModal').classList.add('active');
             document.getElementById('statusModal').setAttribute('aria-hidden', 'false');
-            document.getElementById('statusSelect').focus();
+            document.querySelector('#statusModal .modal-close').focus();
         }
 
         function closeModal() {
@@ -583,7 +583,7 @@ $categories = $stmt->fetchAll();
             document.getElementById('deleteUserName').textContent = userName;
             document.getElementById('deleteModal').classList.add('active');
             document.getElementById('deleteModal').setAttribute('aria-hidden', 'false');
-            document.querySelector('#deleteModal .btn-secondary').focus();
+            document.querySelector('#deleteModal .modal-close').focus();
         }
 
         function closeDeleteModal() {

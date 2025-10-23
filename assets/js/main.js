@@ -1,6 +1,22 @@
 // Global variables
 let isVerified = false;
 let userData = null;
+let razorpayKey = ''; // To be fetched from config
+
+// Fetch config on load
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const response = await fetch('api/get-config.php');
+        const config = await response.json();
+        razorpayKey = config.razorpay_key;
+        firstSessionAmount = parseFloat(config.first_session_amount) || 500;
+    } catch (error) {
+        console.error('Error fetching config:', error);
+        // Use default values if config fetch fails
+        firstSessionAmount = 500;
+    }
+});
+
 
 // Toggle forms based on registration status
 function toggleForms() {
@@ -56,7 +72,7 @@ document.getElementById('verifyForm').addEventListener('submit', async (e) => {
                 document.getElementById('verification-form').classList.add('hidden');
                 document.getElementById('booking-form').classList.remove('hidden');
                 document.getElementById('booking-form').classList.add('fade-in');
-                prefillForm(userData);
+                prefillForm(result.data);
             }, 1000);
         } else {
             showMessage(messageDiv, result.message || 'Verification failed. Please check your details.', 'error');
@@ -75,6 +91,7 @@ function prefillForm(data) {
     document.getElementById('email').value = data.email || '';
     document.getElementById('dob').value = data.dob || '';
     document.getElementById('how_learned').value = data.how_learned || '';
+    document.getElementById('query_text').value = data.query_text || '';
 
     // Set mobile number radio as default for verified users
     const phoneRadio = document.querySelector('input[name="verify_method"][value="phone"]');
@@ -86,7 +103,14 @@ function prefillForm(data) {
     // For verified users, prefill new address fields
     if (data.house_number) document.getElementById('house_number').value = data.house_number;
     if (data.street_locality) document.getElementById('street_locality').value = data.street_locality;
-    if (data.pincode) document.getElementById('pincode').value = data.pincode;
+    if (data.pincode) {
+        document.getElementById('pincode').value = data.pincode;
+        // Trigger pincode lookup if prefilled
+        handlePincodeInput();
+        const pincodeInput = document.getElementById('pincode');
+        const event = new Event('input', { bubbles: true });
+        pincodeInput.dispatchEvent(event);
+    }
     if (data.area_village) document.getElementById('area_village').value = data.area_village;
     if (data.city) document.getElementById('city').value = data.city;
     if (data.state) {
@@ -143,7 +167,6 @@ function updateClientId() {
         
         const clientId = firstInitial + lastInitial + mobileDigits;
         
-        // Store client ID in a hidden field or display it
         let clientIdField = document.getElementById('client_id');
         if (!clientIdField) {
             clientIdField = document.createElement('input');
@@ -237,7 +260,6 @@ function showMessage(element, message, type) {
     element.className = `message ${type}`;
     element.classList.remove('hidden');
     
-    // Hide message after 5 seconds
     setTimeout(() => {
         element.classList.add('hidden');
     }, 5000);
@@ -249,6 +271,8 @@ let pincodeData = null;
 // Handle pincode input and lookup
 function handlePincodeInput() {
     const pincodeInput = document.getElementById('pincode');
+    if (!pincodeInput) return;
+
     const pincodeStatus = document.getElementById('pincode-status');
     const areaSelection = document.getElementById('area-selection');
     const citySelection = document.getElementById('city-selection');
@@ -271,7 +295,6 @@ function handlePincodeInput() {
                     pincodeStatus.textContent = `Found ${pincodeData.length} locations`;
                     pincodeStatus.style.color = '#10b981';
 
-                    // Populate Area/Village dropdown (Name column)
                     const uniqueAreas = [...new Set(pincodeData.map(office => office.Name))];
                     areaSelect.innerHTML = '<option value="">Select area/village</option>';
                     uniqueAreas.forEach(area => {
@@ -281,8 +304,7 @@ function handlePincodeInput() {
                         areaSelect.appendChild(option);
                     });
 
-                    // Populate City dropdown (Block column)
-                    const uniqueCities = [...new Set(pincodeData.map(office => office.Block).filter(block => block))];
+                    const uniqueCities = [...new Set(pincodeData.map(office => office.Block).filter(block => block !== "NA"))];
                     citySelect.innerHTML = '<option value="">Select city</option>';
                     uniqueCities.forEach(city => {
                         const option = document.createElement('option');
@@ -296,39 +318,25 @@ function handlePincodeInput() {
                     areaSelect.required = true;
                     citySelect.required = true;
 
-                    // Auto-fill district and state
                     const firstOffice = pincodeData[0];
                     document.getElementById('district').value = firstOffice.District;
                     document.getElementById('state').value = firstOffice.Circle || firstOffice.State;
                 } else {
-                    pincodeStatus.textContent = 'Invalid PIN code. Please check and try again.';
+                    pincodeStatus.textContent = 'Invalid PIN code';
                     pincodeStatus.style.color = '#ef4444';
-                    areaSelection.classList.add('hidden');
-                    citySelection.classList.add('hidden');
                     pincodeData = null;
-                    clearAddressFields();
+                    clearAddressFields(false);
                 }
             } catch (error) {
-                pincodeStatus.textContent = 'Error looking up PIN code. Please try again.';
+                pincodeStatus.textContent = 'Error looking up PIN code';
                 pincodeStatus.style.color = '#ef4444';
-                areaSelection.classList.add('hidden');
-                citySelection.classList.add('hidden');
                 pincodeData = null;
-                clearAddressFields();
+                clearAddressFields(false);
             }
-        } else if (pincode.length > 0) {
-            pincodeStatus.textContent = 'Enter 6-digit PIN code';
-            pincodeStatus.style.color = '#6b7280';
-            areaSelection.classList.add('hidden');
-            citySelection.classList.add('hidden');
-            pincodeData = null;
-            clearAddressFields();
         } else {
             pincodeStatus.textContent = '';
-            areaSelection.classList.add('hidden');
-            citySelection.classList.add('hidden');
             pincodeData = null;
-            clearAddressFields();
+            clearAddressFields(true);
         }
     });
 }
@@ -339,12 +347,16 @@ function fillAddressDetails() {
 }
 
 // Clear address fields
-function clearAddressFields() {
+function clearAddressFields(clearPincode = true) {
+    if (clearPincode) document.getElementById('pincode').value = '';
     document.getElementById('district').value = '';
     document.getElementById('state').value = '';
-    document.getElementById('area_village').value = '';
-    document.getElementById('city').value = '';
+    document.getElementById('area_village').innerHTML = '<option value="">Select area/village</option>';
+    document.getElementById('city').innerHTML = '<option value="">Select city</option>';
+    document.getElementById('area-selection').classList.add('hidden');
+    document.getElementById('city-selection').classList.add('hidden');
 }
+
 
 // Voice recording functionality
 let mediaRecorder = null;
@@ -362,7 +374,7 @@ function initVoiceRecording() {
     const stopBtn = document.getElementById('stopRecording');
     const discardBtn = document.getElementById('discardRecording');
 
-    if (!startBtn) return; // Exit if elements don't exist
+    if (!startBtn) return;
 
     startBtn.addEventListener('click', startRecording);
     pauseBtn.addEventListener('click', pauseResumeRecording);
@@ -388,11 +400,9 @@ async function startRecording() {
         isPaused = false;
         pausedTime = 0;
 
-        // Show recording UI
         document.getElementById('startRecording').classList.add('hidden');
         document.getElementById('recording-active').classList.remove('hidden');
 
-        // Start timer
         updateRecordingTimer();
         recordingTimer = setInterval(() => {
             const elapsed = Date.now() - recordingStartTime - pausedTime;
@@ -434,7 +444,6 @@ function pauseResumeRecording() {
 
 function cancelRecording() {
     if (mediaRecorder) {
-        mediaRecorder.stop();
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
         mediaRecorder = null;
     }
@@ -442,7 +451,6 @@ function cancelRecording() {
     clearInterval(recordingTimer);
     audioChunks = [];
 
-    // Reset UI
     document.getElementById('startRecording').classList.remove('hidden');
     document.getElementById('recording-active').classList.add('hidden');
     document.getElementById('recording-complete').classList.add('hidden');
@@ -462,14 +470,11 @@ function handleRecordingComplete() {
     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
     const audioUrl = URL.createObjectURL(audioBlob);
 
-    // Display playback
     const audioPlayback = document.getElementById('audioPlayback');
     audioPlayback.src = audioUrl;
 
-    // Upload audio file
     uploadAudioFile(audioBlob);
 
-    // Update UI
     document.getElementById('recording-active').classList.add('hidden');
     document.getElementById('recording-complete').classList.remove('hidden');
     document.getElementById('recording-timer').textContent = '00:00';
@@ -499,77 +504,28 @@ async function uploadAudioFile(audioBlob) {
 }
 
 function discardRecording() {
-    // Clear the uploaded file path
     document.getElementById('voice_recording_path').value = '';
-
-    // Reset UI
     document.getElementById('startRecording').classList.remove('hidden');
     document.getElementById('recording-complete').classList.add('hidden');
     document.getElementById('audioPlayback').src = '';
     audioChunks = [];
-}
-
-function clearAudioRecording() {
-    // Clear the uploaded file path
-    document.getElementById('voice_recording_path').value = '';
-
-    // Reset UI
-    document.getElementById('startRecording').classList.remove('hidden');
-    document.getElementById('recording-active').classList.add('hidden');
-    document.getElementById('recording-complete').classList.add('hidden');
-    document.getElementById('audioPlayback').src = '';
-    document.getElementById('recording-timer').textContent = '00:00';
-    document.getElementById('pauseRecording').textContent = 'Pause';
-
-    // Clear recording data
-    audioChunks = [];
-
-    // Stop any active recording
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
-        mediaRecorder = null;
-    }
-
-    // Clear timer
-    if (recordingTimer) {
-        clearInterval(recordingTimer);
-        recordingTimer = null;
-    }
-}
-
-function updateRecordingTimer() {
-    const elapsed = Date.now() - recordingStartTime - (isPaused ? pausedTime : 0);
-    const seconds = Math.floor(elapsed / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-
-    const timerDisplay = document.getElementById('recording-timer');
-    timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
 // Initialize form on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Set up event listeners
     document.getElementById('dob').addEventListener('change', calculateAge);
     document.getElementById('apply-coupon-btn').addEventListener('click', applyCoupon);
     document.getElementById('remove-coupon-btn').addEventListener('click', removeCoupon);
     document.getElementById('pay-now-btn').addEventListener('click', payNow);
-    document.getElementById('book-now-btn').addEventListener('click', () => bookNow(null));
+    document.getElementById('book-now-btn').addEventListener('click', () => bookNow(userData, null, null));
     document.getElementById('retry-payment-btn').addEventListener('click', retryPayment);
 
-    // Initialize client ID generation for new users
     if (!isVerified) {
         generateClientId();
     }
 
-    // Initialize verification label
     updateVerificationLabel();
-
-    // Initialize pincode lookup
     handlePincodeInput();
-
-    // Initialize voice recording
     initVoiceRecording();
 });
 
@@ -579,12 +535,7 @@ function updateVerificationLabel() {
     const label = document.getElementById('verify_value_label');
     const input = document.getElementById('verify_value');
     
-    if (!selectedMethod) {
-        label.textContent = 'Verification Details';
-        input.placeholder = 'Enter your verification details';
-        input.type = 'text';
-        return;
-    }
+    if (!selectedMethod) return;
     
     switch(selectedMethod.value) {
         case 'phone':
@@ -602,20 +553,16 @@ function updateVerificationLabel() {
             input.placeholder = 'Enter your client ID';
             input.type = 'text';
             break;
-        default:
-            label.textContent = 'Verification Details';
-            input.placeholder = 'Enter your verification details';
-            input.type = 'text';
     }
 }
 
 // Payment Flow Logic
-let firstSessionAmount = 500; // This can be fetched from config later
+let firstSessionAmount = 500;
 let discount = 0;
 let couponCode = null;
+let currentOrderId = null;
 
 function showPrepayment() {
-    // Basic validation
     if (!document.getElementById('name').value || !document.getElementById('mobile').value || !document.getElementById('email').value) {
         alert('Please fill in all required fields.');
         return;
@@ -624,28 +571,19 @@ function showPrepayment() {
     document.getElementById('booking-flow').classList.add('hidden');
     document.getElementById('prepayment-summary').classList.remove('hidden');
 
-    const name = document.getElementById('name').value;
-    const email = document.getElementById('email').value;
-    const mobile = document.getElementById('mobile').value;
-
     const paymentDetails = `
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Mobile:</strong> ${mobile}</p>
+        <p><strong>Name:</strong> ${document.getElementById('name').value}</p>
+        <p><strong>Email:</strong> ${document.getElementById('email').value}</p>
+        <p><strong>Mobile:</strong> ${document.getElementById('mobile').value}</p>
     `;
     document.getElementById('payment-details').innerHTML = paymentDetails;
 
-    document.getElementById('subtotal').innerText = '₹' + firstSessionAmount;
-    document.getElementById('total-amount').innerText = '₹' + firstSessionAmount;
-    document.getElementById('discount').innerText = '₹' + discount;
+    updateTotal();
 }
 
 async function applyCoupon() {
     couponCode = document.getElementById('coupon-code').value;
-    if (!couponCode) {
-        alert('Please enter a coupon code.');
-        return;
-    }
+    if (!couponCode) return;
 
     const response = await fetch('api/validate-coupon.php', {
         method: 'POST',
@@ -656,8 +594,7 @@ async function applyCoupon() {
     const data = await response.json();
 
     if (data.success) {
-        discount = data.discount;
-        document.getElementById('discount').innerText = '₹' + discount;
+        discount = parseFloat(data.discount);
         updateTotal();
         document.getElementById('coupon-code').disabled = true;
         document.getElementById('apply-coupon-btn').classList.add('hidden');
@@ -670,7 +607,6 @@ async function applyCoupon() {
 function removeCoupon() {
     discount = 0;
     couponCode = null;
-    document.getElementById('discount').innerText = '₹' + discount;
     updateTotal();
     document.getElementById('coupon-code').value = '';
     document.getElementById('coupon-code').disabled = false;
@@ -679,8 +615,10 @@ function removeCoupon() {
 }
 
 function updateTotal() {
-    const total = firstSessionAmount - discount;
-    document.getElementById('total-amount').innerText = '₹' + total;
+    const total = Math.max(0, firstSessionAmount - discount);
+    document.getElementById('subtotal').innerText = '₹' + firstSessionAmount.toFixed(2);
+    document.getElementById('discount').innerText = '₹' + discount.toFixed(2);
+    document.getElementById('total-amount').innerText = '₹' + total.toFixed(2);
 
     if (total <= 0) {
         document.getElementById('pay-now-btn').classList.add('hidden');
@@ -695,92 +633,113 @@ async function payNow() {
     const totalAmount = firstSessionAmount - discount;
 
     const orderData = {
-        amount: firstSessionAmount,
+        amount: totalAmount,
         coupon_code: couponCode,
+        user_id: userData ? userData.id : null,
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        mobile: document.getElementById('mobile').value,
     };
 
-    if (userData && userData.id) {
-        orderData.user_id = userData.id;
-    } else {
-        orderData.name = document.getElementById('name').value;
-        orderData.email = document.getElementById('email').value;
-        orderData.mobile = document.getElementById('mobile').value;
-    }
+    try {
+        const response = await fetch('api/create-order.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        });
+        const data = await response.json();
 
-    const response = await fetch('api/create-order.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData)
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-        if (data.order_id) {
-            // Payment required
-            const options = {
-                key: 'rzp_live_RW2PNj1n17fMew', // Replace with your key
-                amount: data.amount * 100,
-                currency: 'INR',
-                name: 'Galaxy Healing World',
-                description: 'First Session Booking',
-                order_id: data.order_id,
-                handler: function (response) {
-                    bookNow(data.user_id, response.razorpay_payment_id);
-                },
-                prefill: {
-                    name: document.getElementById('name').value,
-                    email: document.getElementById('email').value,
-                    contact: document.getElementById('mobile').value
-                },
-                theme: {
-                    color: '#667eea'
-                }
-            };
-            const rzp = new Razorpay(options);
-            rzp.on('payment.failed', function (response) {
-                showPaymentFailed();
-            });
-            rzp.open();
+        if (data.success) {
+            userData = data.user; // Update user data with what the server returns
+            currentOrderId = data.order_id;
+            
+            if (data.amount > 0 && data.order_id) {
+                const options = {
+                    key: razorpayKey,
+                    amount: data.amount * 100,
+                    currency: 'INR',
+                    name: 'Galaxy Healing World',
+                    description: 'First Session Booking',
+                    order_id: data.order_id,
+                    handler: function (response) {
+                        bookNow(userData, response.razorpay_payment_id, response.razorpay_order_id);
+                    },
+                    prefill: {
+                        name: document.getElementById('name').value,
+                        email: document.getElementById('email').value,
+                        contact: document.getElementById('mobile').value
+                    },
+                    theme: {
+                        color: '#667eea'
+                    }
+                };
+                const rzp = new Razorpay(options);
+                rzp.on('payment.failed', function (response) {
+                    showPaymentFailed(response.error.description);
+                });
+                rzp.open();
+            } else {
+                // Free booking
+                bookNow(userData, null, currentOrderId);
+            }
         } else {
-            // Free booking
-            bookNow(data.user_id, null);
+            alert('Could not create order: ' + (data.message || 'Unknown error'));
         }
-    } else {
-        alert('Could not create order: ' + data.message);
+    } catch (error) {
+        alert('An error occurred while creating the order. Please try again.');
     }
 }
 
-async function bookNow(userId, paymentId = null) {
+async function bookNow(user, paymentId, orderId) {
     const formData = new FormData(document.getElementById('mainBookingForm'));
-    if (paymentId) {
-        formData.append('payment_id', paymentId);
+    
+    if (user && user.id) {
+        formData.append('user_id', user.id);
     }
-    formData.append('payment_made', firstSessionAmount - discount);
-    formData.append('user_id', userId);
 
-    const response = await fetch('api/book-session.php', {
-        method: 'POST',
-        body: formData
-    });
+    if (paymentId) formData.append('razorpay_payment_id', paymentId);
+    if (orderId) formData.append('razorpay_order_id', orderId);
 
-    const data = await response.json();
+    try {
+        const response = await fetch('api/book-session.php', {
+            method: 'POST',
+            body: formData
+        });
 
-    if (data.success) {
-        showPaymentSuccess();
-    } else {
-        alert('Booking failed: ' + data.message);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server error: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            showPaymentSuccess();
+        } else {
+            showPaymentFailed('Booking failed: ' + (data.message || 'Please contact support'));
+        }
+    } catch (error) {
+        showPaymentFailed(`Booking failed: ${error.message}. Please contact support.`);
     }
 }
 
 function showPaymentSuccess() {
     document.getElementById('prepayment-summary').classList.add('hidden');
     document.getElementById('payment-success').classList.remove('hidden');
+    document.getElementById('payment-failed').classList.add('hidden');
 }
 
-function showPaymentFailed() {
+function showPaymentFailed(message = '') {
     document.getElementById('prepayment-summary').classList.add('hidden');
     document.getElementById('payment-failed').classList.remove('hidden');
+    document.getElementById('payment-success').classList.add('hidden');
+    
+    const failedMessage = document.querySelector('#payment-failed p');
+    if (message) {
+        failedMessage.textContent = message;
+    } else {
+        failedMessage.textContent = 'Unfortunately, we were unable to process your payment.';
+    }
 }
 
 function retryPayment() {
