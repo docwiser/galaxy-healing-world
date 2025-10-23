@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
         payNowBtn.textContent = 'Processing...';
 
         const options = {
-            key: "YOUR_KEY_ID", 
+            key: "rzp_live_RW2PNj1n17fMew", 
             amount: currentTotal * 100,
             currency: "INR",
             name: "Galaxy Healing World",
