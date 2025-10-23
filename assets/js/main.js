@@ -719,7 +719,7 @@ async function payNow() {
         if (data.order_id) {
             // Payment required
             const options = {
-                key: 'YOUR_RAZORPAY_KEY_ID', // Replace with your key
+                key: 'rzp_live_RW2PNj1n17fMew', // Replace with your key
                 amount: data.amount * 100,
                 currency: 'INR',
                 name: 'Galaxy Healing World',
