@@ -93,7 +93,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Event Listeners ---
 
-    // PIN Code Lookup
     const pincodeInput = document.getElementById('pincode');
     pincodeInput.addEventListener('input', function() {
         const pincode = this.value.trim();
@@ -140,13 +139,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('city-selection').classList.remove('hidden');
     }
 
-    // Main Form Submission
     mainBookingForm.addEventListener('submit', function(event) {
         event.preventDefault();
         bookingFlow.classList.add('hidden');
         prepaymentSummary.classList.remove('hidden');
-        
-        // Populate Summary
         document.getElementById('payment-details').innerHTML = `
             <h4>Booking for:</h4>
             <p><strong>Name:</strong> ${document.getElementById('name').value}</p>
@@ -156,18 +152,50 @@ document.addEventListener('DOMContentLoaded', function() {
         prepaymentSummary.scrollIntoView({ behavior: 'smooth' });
     });
 
-    // --- Payment Logic ---
+    // --- Payment & Coupon Logic ---
 
     applyCouponBtn.addEventListener('click', function() {
         const couponCode = document.getElementById('coupon-code').value.trim();
-        if (couponCode.toUpperCase() === 'SAVE20') {
-            currentDiscount = currentSubtotal * 0.20; // 20% discount
-            alert('Coupon "SAVE20" applied successfully!');
-        } else {
-            alert('Invalid coupon code.');
-            currentDiscount = 0;
+        if (!couponCode) {
+            alert('Please enter a coupon code.');
+            return;
         }
-        updatePaymentSummary();
+
+        // **CORRECTED**: Using the local API path.
+        const couponApiUrl = 'api/validate_coupon.php';
+
+        applyCouponBtn.textContent = 'Applying...';
+        applyCouponBtn.disabled = true;
+
+        fetch(couponApiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ coupon_code: couponCode })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.valid && data.discount_percentage) {
+                const discountPercentage = parseFloat(data.discount_percentage);
+                currentDiscount = currentSubtotal * (discountPercentage / 100);
+                alert(`Coupon "${couponCode}" applied! You get a ${discountPercentage}% discount.`);
+            } else {
+                currentDiscount = 0;
+                alert(data.message || 'Invalid or expired coupon code.');
+            }
+            updatePaymentSummary();
+        })
+        .catch(error => {
+            console.error('Coupon API Error:', error);
+            alert('Could not validate your coupon. Please try again later.');
+            currentDiscount = 0;
+            updatePaymentSummary();
+        })
+        .finally(() => {
+            applyCouponBtn.textContent = 'Apply';
+            applyCouponBtn.disabled = false;
+        });
     });
 
     removeCouponBtn.addEventListener('click', function() {
@@ -178,31 +206,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function updatePaymentSummary() {
-        currentTotal = currentSubtotal - currentDiscount;
+        currentTotal = Math.max(0, currentSubtotal - currentDiscount);
         document.getElementById('subtotal').textContent = `₹${currentSubtotal.toFixed(2)}`;
         document.getElementById('discount').textContent = `₹${currentDiscount.toFixed(2)}`;
         document.getElementById('total-amount').textContent = `₹${currentTotal.toFixed(2)}`;
-
-        // Toggle coupon buttons
         removeCouponBtn.classList.toggle('hidden', currentDiscount === 0);
         applyCouponBtn.classList.toggle('hidden', currentDiscount > 0);
-
-        // Toggle Pay/Book Now buttons
         payNowBtn.classList.toggle('hidden', currentTotal <= 0);
         bookNowBtn.classList.toggle('hidden', currentTotal > 0);
     }
     
-    // "Book Now" for free bookings
     bookNowBtn.addEventListener('click', function() {
         showSuccess();
     });
 
-    // "Pay Now" for paid bookings
     payNowBtn.addEventListener('click', function() {
         triggerRazorpay();
     });
     
-    // "Retry Payment"
     retryPaymentBtn.addEventListener('click', function() {
         paymentFailed.classList.add('hidden');
         prepaymentSummary.classList.remove('hidden');
@@ -210,15 +231,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function triggerRazorpay() {
+        if (currentTotal <= 0) return;
+
+        // **CRITICAL**: You MUST replace "YOUR_KEY_ID" with your actual Razorpay Key ID.
         const options = {
-            key: "YOUR_KEY_ID", // **IMPORTANT: Replace with your actual Razorpay Key ID**
-            amount: currentTotal * 100, // Amount in the smallest currency unit (paise for INR)
+            key: "YOUR_KEY_ID", 
+            amount: currentTotal * 100,
             currency: "INR",
             name: "Galaxy Healing World",
             description: "Therapy Session Booking",
-            image: "https://example.com/your_logo.png", // Optional
+            image: "https://www.galaxyhealingworld.com/assets/images/logo.png",
             handler: function (response){
-                // Payment Success
                 console.log('Payment successful:', response);
                 showSuccess();
             },
@@ -232,12 +255,12 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             modal: {
                 ondismiss: function(){
-                    // Payment was closed without completion
                     console.log('Payment modal dismissed.');
                     showFailure();
                 }
             }
         };
+        
         const rzp = new Razorpay(options);
         rzp.open();
     }
@@ -253,5 +276,4 @@ document.addEventListener('DOMContentLoaded', function() {
         paymentFailed.classList.remove('hidden');
         paymentFailed.scrollIntoView({ behavior: 'smooth' });
     }
-
 });
