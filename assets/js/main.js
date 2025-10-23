@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         status.style.color = 'green';
                         const postOffice = data[0].PostOffice[0];
                         document.getElementById('district').value = postOffice.District;
-                        document.getElementById('state').value = post.Office.State;
+                        document.getElementById('state').value = postOffice.State;
                         // Assuming you have city and area dropdowns
                         populateLocationDropdowns(data[0].PostOffice);
                     } else {
