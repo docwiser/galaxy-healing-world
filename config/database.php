@@ -63,6 +63,8 @@ class Database {
                 district VARCHAR(100),
                 state VARCHAR(100),
                 address TEXT,
+                occupation VARCHAR(255),
+                qualification VARCHAR(255),
                 voice_recording_path TEXT,
                 query_text TEXT,
                 attendant VARCHAR(50) DEFAULT 'self',
@@ -179,6 +181,14 @@ class Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (coupon_id) REFERENCES coupons(id)
+            )",
+
+            // Templates table
+            "CREATE TABLE IF NOT EXISTS templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name VARCHAR(255) UNIQUE NOT NULL,
+                content TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )"
         ];
     }
@@ -202,6 +212,8 @@ class Database {
                 district VARCHAR(100),
                 state VARCHAR(100),
                 address TEXT,
+                occupation VARCHAR(255),
+                qualification VARCHAR(255),
                 voice_recording_path TEXT,
                 query_text TEXT,
                 attendant VARCHAR(50) DEFAULT 'self',
@@ -318,6 +330,14 @@ class Database {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (coupon_id) REFERENCES coupons(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            
+            // Templates table
+            "CREATE TABLE IF NOT EXISTS templates (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) UNIQUE NOT NULL,
+                content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         ];
     }
@@ -357,7 +377,7 @@ class Database {
     }
 
     private function getAllSQLiteData() {
-        $tables = ['users', 'sessions', 'categories', 'agent_forms', 'email_logs', 'admin_users', 'system_settings', 'coupons', 'payments'];
+        $tables = ['users', 'sessions', 'categories', 'agent_forms', 'email_logs', 'admin_users', 'system_settings', 'coupons', 'payments', 'templates'];
         $data = [];
         
         foreach ($tables as $table) {

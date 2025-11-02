@@ -3,6 +3,9 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
+use Razorpay\Api\Api;
+use Razorpay\Api\Errors\SignatureVerificationError;
+
 header('Content-Type: application/json');
 
 // Basic error handling
@@ -25,7 +28,7 @@ try {
                 name = ?, email = ?, mobile = ?, dob = ?, age = ?, query_text = ?, attendant = ?, 
                 attendant_name = ?, attendant_email = ?, attendant_mobile = ?, relationship = ?, 
                 house_number = ?, street_locality = ?, pincode = ?, area_village = ?, city = ?, 
-                district = ?, state = ?, address = ?, how_learned = ?, has_disability = ?, 
+                district = ?, state = ?, address = ?, occupation = ?, qualification = ?, how_learned = ?, has_disability = ?, 
                 disability_type = ?, disability_percentage = ?, voice_recording_path = ?, 
                 status = 'new' 
             WHERE id = ?"
@@ -35,7 +38,7 @@ try {
             $_POST['name'] ?? null,
             $_POST['email'] ?? null,
             $_POST['mobile'] ?? null,
-            $_POST['dob'] ?: null, // Handle empty string from date input
+            $_POST['dob'] ?: null,
             $_POST['approximate_age'] ?? null,
             $_POST['query_text'] ?? null,
             $_POST['attendant'] ?? 'self',
@@ -51,6 +54,8 @@ try {
             $_POST['district'] ?? null,
             $_POST['state'] ?? null,
             $_POST['address'] ?? null,
+            $_POST['occupation'] ?? null,
+            $_POST['qualification'] ?? null,
             $_POST['how_learned'] ?? null,
             $_POST['has_disability'] ?? 'no',
             $_POST['disability_type'] ?? null,
@@ -59,16 +64,16 @@ try {
             $user_id
         ]);
     } else {
-        // Create new user (fallback)
+        // Create new user
         $client_id = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $_POST['name'] ?? 'USER'), 0, 4)) . substr($_POST['mobile'] ?? '0000', -4);
         
         $stmt = $db->prepare(
             "INSERT INTO users (
                 client_id, name, email, mobile, dob, age, query_text, attendant, attendant_name, 
                 attendant_email, attendant_mobile, relationship, house_number, street_locality, 
-                pincode, area_village, city, district, state, address, how_learned, 
+                pincode, area_village, city, district, state, address, occupation, qualification, how_learned, 
                 has_disability, disability_type, disability_percentage, voice_recording_path, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')"
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first-time')"
         );
         
         $stmt->execute([
@@ -92,6 +97,8 @@ try {
             $_POST['district'] ?? null,
             $_POST['state'] ?? null,
             $_POST['address'] ?? null,
+            $_POST['occupation'] ?? null,
+            $_POST['qualification'] ?? null,
             $_POST['how_learned'] ?? null,
             $_POST['has_disability'] ?? 'no',
             $_POST['disability_type'] ?? null,
@@ -107,18 +114,48 @@ try {
     $stmt->execute([$user_id, $_POST['query_text'] ?? null]);
     $session_id = $db->lastInsertId();
 
-    // Update payment record if payment was made
-    if (isset($_POST['razorpay_payment_id'])) {
-        $stmt = $db->prepare("UPDATE payments SET status = 'completed', payment_id = ? WHERE user_id = ? AND status = 'created' ORDER BY created_at DESC LIMIT 1");
-        $stmt->execute([$_POST['razorpay_payment_id'], $user_id]);
-    }
+    // Verify payment and update record
+    if (isset($_POST['razorpay_payment_id']) && isset($_POST['razorpay_order_id']) && isset($_POST['razorpay_signature'])) {
+        $payment_config = Config::get('payment');
+        
+        // IMPORTANT: Ensure your Razorpay keys are set in the config file.
+        $razorpay_key_id = $payment_config['razorpay_key_id'] ?? '';
+        $razorpay_key_secret = $payment_config['razorpay_key_secret'] ?? '';
 
-    // Associate session with payment
-    if (isset($_POST['razorpay_order_id'])) {
-         $stmt = $db->prepare("UPDATE payments SET session_id = ? WHERE order_id = ?");
-         $stmt->execute([$session_id, $_POST['razorpay_order_id']]);
-    }
+        if (empty($razorpay_key_id) || empty($razorpay_key_secret)) {
+            throw new Exception('Razorpay API keys are not configured.');
+        }
 
+        $api = new Api($razorpay_key_id, $razorpay_key_secret);
+        
+        try {
+            $attributes = [
+                'razorpay_order_id' => $_POST['razorpay_order_id'],
+                'razorpay_payment_id' => $_POST['razorpay_payment_id'],
+                'razorpay_signature' => $_POST['razorpay_signature']
+            ];
+
+            $api->utility->verifyPaymentSignature($attributes);
+            
+            // Signature is valid, update payment status and associate session
+            $stmt = $db->prepare("UPDATE payments SET status = 'completed', payment_id = ?, session_id = ? WHERE order_id = ? AND user_id = ?");
+            $stmt->execute([$_POST['razorpay_payment_id'], $session_id, $_POST['razorpay_order_id'], $user_id]);
+
+        } catch(SignatureVerificationError $e) {
+            // Signature is invalid
+            error_log('Razorpay Signature Verification Failed: ' . $e->getMessage());
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Payment verification failed. Invalid signature.']);
+            exit;
+        }
+    } else {
+         // This block handles cases where payment is not made (e.g. for a free session coupon)
+         // or if payment is handled differently.
+         if (isset($_POST['razorpay_order_id'])) {
+             $stmt = $db->prepare("UPDATE payments SET session_id = ? WHERE order_id = ?");
+             $stmt->execute([$session_id, $_POST['razorpay_order_id']]);
+         }
+    }
 
     echo json_encode(['success' => true, 'user_id' => $user_id, 'session_id' => $session_id]);
 
