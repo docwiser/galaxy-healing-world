@@ -17,13 +17,43 @@ document.addEventListener('DOMContentLoaded', function() {
     const bookNowBtn = document.getElementById('book-now-btn');
     const retryPaymentBtn = document.getElementById('retry-payment-btn');
 
+    // Audio Recording Elements
+    const startRecordingBtn = document.getElementById('startRecording');
+    const recordingActiveEl = document.getElementById('recording-active');
+    const recordingTimerEl = document.getElementById('recording-timer');
+    const pauseRecordingBtn = document.getElementById('pauseRecording');
+    const cancelRecordingBtn = document.getElementById('cancelRecording');
+    const stopRecordingBtn = document.getElementById('stopRecording');
+    const recordingCompleteEl = document.getElementById('recording-complete');
+    const audioPlaybackEl = document.getElementById('audioPlayback');
+    const discardRecordingBtn = document.getElementById('discardRecording');
+    const voiceRecordingPathInput = document.getElementById('voice_recording_path');
+
+
     // --- State Management ---
-    let currentSubtotal = 500; // Example subtotal
+    let currentSubtotal = 500;
     let currentDiscount = 0;
     let currentTotal = 500;
+    let razorpayConfig = {};
+    let mediaRecorder;
+    let audioChunks = [];
+    let timerInterval;
+    let seconds = 0;
+
+
+    // --- Initial Data Fetch ---
+    fetch('api/get-config.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                razorpayConfig = data.config.payment;
+                currentSubtotal = parseFloat(razorpayConfig.first_session_amount) || 500;
+                updatePaymentSummary();
+            }
+        });
+
 
     // --- Global Functions for inline HTML listeners ---
-
     window.toggleForms = function() {
         const registered = document.querySelector('input[name="registered"]:checked');
         if (registered && registered.value === 'yes') {
@@ -61,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const unknown = document.getElementById('unknown_dob').checked;
         document.getElementById('dob').disabled = unknown;
         document.getElementById('age-input').classList.toggle('hidden', !unknown);
-        if(unknown) document.getElementById('calculated-age').classList.add('hidden');
+        if (unknown) document.getElementById('calculated-age').classList.add('hidden');
     };
 
     window.calculateAge = function() {
@@ -88,11 +118,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasDisability = document.querySelector('input[name="has_disability"]:checked').value;
         document.getElementById('disability-info').classList.toggle('hidden', hasDisability !== 'yes');
     };
-    
+
     window.fillAddressDetails = function() {};
 
     // --- Event Listeners ---
-
     const pincodeInput = document.getElementById('pincode');
     pincodeInput.addEventListener('input', function() {
         const pincode = this.value.trim();
@@ -149,11 +178,133 @@ document.addEventListener('DOMContentLoaded', function() {
             <p><strong>Email:</strong> ${document.getElementById('email').value}</p>
         `;
         updatePaymentSummary();
-        prepaymentSummary.scrollIntoView({ behavior: 'smooth' });
+        prepaymentSummary.scrollIntoView({
+            behavior: 'smooth'
+        });
     });
 
-    // --- Payment & Coupon Logic ---
+    // --- Audio Recording Logic ---
 
+    startRecordingBtn.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: true
+            });
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+            mediaRecorder.onstop = uploadRecording;
+            mediaRecorder.start();
+
+            startRecordingBtn.classList.add('hidden');
+            recordingActiveEl.classList.remove('hidden');
+            startTimer();
+
+        } catch (err) {
+            alert("Error accessing microphone. Please grant permission and try again.");
+            console.error("getUserMedia error:", err);
+        }
+    });
+
+    stopRecordingBtn.addEventListener('click', () => {
+        mediaRecorder.stop();
+        stopTimer();
+    });
+    
+    cancelRecordingBtn.addEventListener('click', () => {
+        mediaRecorder.stop();
+        resetRecordingState(true); // Hard reset
+    });
+
+    discardRecordingBtn.addEventListener('click', () => {
+        resetRecordingState(true);
+    });
+
+    pauseRecordingBtn.addEventListener('click', () => {
+        if (mediaRecorder.state === 'recording') {
+            mediaRecorder.pause();
+            pauseRecordingBtn.textContent = 'Resume';
+            stopTimer();
+        } else {
+            mediaRecorder.resume();
+            pauseRecordingBtn.textContent = 'Pause';
+            startTimer();
+        }
+    });
+
+
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            seconds++;
+            const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            recordingTimerEl.textContent = `${minutes}:${secs}`;
+            if (seconds >= 60) {
+                stopRecordingBtn.click();
+            }
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+    }
+
+    function resetRecordingState(hardReset = false) {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+        mediaRecorder = null;
+        audioChunks = [];
+        stopTimer();
+        seconds = 0;
+        recordingTimerEl.textContent = '00:00';
+        
+        recordingActiveEl.classList.add('hidden');
+        recordingCompleteEl.classList.add('hidden');
+        startRecordingBtn.classList.remove('hidden');
+
+        if(hardReset) {
+            voiceRecordingPathInput.value = '';
+            audioPlaybackEl.removeAttribute('src');
+        }
+    }
+
+    function uploadRecording() {
+        const audioBlob = new Blob(audioChunks, {
+            type: 'audio/webm'
+        });
+        const formData = new FormData();
+        formData.append('audio_data', audioBlob, 'recording.webm');
+        
+        // Show uploading status
+        recordingTimerEl.textContent = 'Uploading...';
+
+        fetch('api/upload-audio.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.filepath) {
+                    voiceRecordingPathInput.value = data.filepath;
+                    audioPlaybackEl.src = URL.createObjectURL(audioBlob);
+                    recordingActiveEl.classList.add('hidden');
+                    recordingCompleteEl.classList.remove('hidden');
+                } else {
+                    alert('Upload failed: ' + data.message);
+                    resetRecordingState(true);
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                alert('An error occurred while uploading the recording.');
+                resetRecordingState(true);
+            });
+    }
+
+
+    // --- Payment & Coupon Logic ---
     applyCouponBtn.addEventListener('click', function() {
         const couponCode = document.getElementById('coupon-code').value.trim();
         if (!couponCode) {
@@ -161,39 +312,40 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const couponApiUrl = 'api/validate-coupons.php';
-
         applyCouponBtn.textContent = 'Applying...';
         applyCouponBtn.disabled = true;
 
-        fetch(couponApiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ coupon_code: couponCode, amount: currentSubtotal })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.success) {
-                currentDiscount = parseFloat(data.discount);
-                alert(`Coupon "${couponCode}" applied!`);
-            } else {
+        fetch('api/validate-coupons.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    coupon_code: couponCode,
+                    amount: currentSubtotal
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.success) {
+                    currentDiscount = parseFloat(data.discount);
+                    alert(`Coupon "${couponCode}" applied!`);
+                } else {
+                    currentDiscount = 0;
+                    alert(data.message || 'Invalid or expired coupon code.');
+                }
+                updatePaymentSummary();
+            })
+            .catch(error => {
+                console.error('Coupon API Error:', error);
+                alert('Could not validate your coupon. Please try again later.');
                 currentDiscount = 0;
-                alert(data.message || 'Invalid or expired coupon code.');
-            }
-            updatePaymentSummary();
-        })
-        .catch(error => {
-            console.error('Coupon API Error:', error);
-            alert('Could not validate your coupon. Please try again later.');
-            currentDiscount = 0;
-            updatePaymentSummary();
-        })
-        .finally(() => {
-            applyCouponBtn.textContent = 'Apply';
-            applyCouponBtn.disabled = false;
-        });
+                updatePaymentSummary();
+            })
+            .finally(() => {
+                applyCouponBtn.textContent = 'Apply';
+                applyCouponBtn.disabled = false;
+            });
     });
 
     removeCouponBtn.addEventListener('click', function() {
@@ -213,15 +365,15 @@ document.addEventListener('DOMContentLoaded', function() {
         payNowBtn.classList.toggle('hidden', currentTotal <= 0);
         bookNowBtn.classList.toggle('hidden', currentTotal > 0);
     }
-    
+
     bookNowBtn.addEventListener('click', function() {
-        showSuccess();
+        finalizeBooking();
     });
 
     payNowBtn.addEventListener('click', function() {
         triggerRazorpay();
     });
-    
+
     retryPaymentBtn.addEventListener('click', function() {
         paymentFailed.classList.add('hidden');
         prepaymentSummary.classList.remove('hidden');
@@ -234,50 +386,110 @@ document.addEventListener('DOMContentLoaded', function() {
         payNowBtn.disabled = true;
         payNowBtn.textContent = 'Processing...';
 
-        const options = {
-            key: "YOUR_KEY_ID", 
-            amount: currentTotal * 100,
-            currency: "INR",
-            name: "Galaxy Healing World",
-            description: "Therapy Session Booking",
-            image: "https://www.galaxyhealingworld.com/assets/images/logo.png",
-            handler: function (response){
-                console.log('Payment successful:', response);
-                payNowBtn.disabled = false;
-                payNowBtn.textContent = 'Pay Now';
-                showSuccess();
-            },
-            prefill: {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                contact: document.getElementById('mobile').value
-            },
-            theme: {
-                color: "#3399cc"
-            },
-            modal: {
-                ondismiss: function(){
-                    console.log('Payment modal dismissed.');
+        const formData = new FormData();
+        formData.append('amount', currentTotal);
+        formData.append('email', document.getElementById('email').value);
+        
+        fetch('api/create-order.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(order => {
+                if (!order.success) {
+                    alert('Could not create a payment order. Please try again.');
                     payNowBtn.disabled = false;
                     payNowBtn.textContent = 'Pay Now';
+                    return;
+                }
+
+                const options = {
+                    key: razorpayConfig.razorpay_key_id,
+                    amount: order.amount,
+                    currency: "INR",
+                    name: "Galaxy Healing World",
+                    description: "Therapy Session Booking",
+                    image: "https://www.galaxyhealingworld.com/assets/images/logo.png",
+                    order_id: order.id,
+                    handler: function(response) {
+                        finalizeBooking(response);
+                    },
+                    prefill: {
+                        name: document.getElementById('name').value,
+                        email: document.getElementById('email').value,
+                        contact: document.getElementById('mobile').value
+                    },
+                    theme: {
+                        color: "#3399cc"
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            console.log('Payment modal dismissed.');
+                            payNowBtn.disabled = false;
+                            payNowBtn.textContent = 'Pay Now';
+                            showFailure();
+                        }
+                    }
+                };
+                const rzp = new Razorpay(options);
+                rzp.open();
+            })
+            .catch(() => {
+                alert('There was an error initializing the payment. Please try again.');
+                payNowBtn.disabled = false;
+                payNowBtn.textContent = 'Pay Now';
+            });
+    }
+
+    function finalizeBooking(paymentData = {}) {
+        const formData = new FormData(mainBookingForm);
+
+        if (paymentData.razorpay_payment_id) {
+            formData.append('razorpay_payment_id', paymentData.razorpay_payment_id);
+            formData.append('razorpay_order_id', paymentData.razorpay_order_id);
+            formData.append('razorpay_signature', paymentData.razorpay_signature);
+        }
+
+        formData.append('occupation', document.getElementById('occupation').value);
+        formData.append('qualification', document.getElementById('qualification').value);
+
+
+        fetch('api/book-session.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess();
+                } else {
+                    alert('Booking failed: ' + data.message);
                     showFailure();
                 }
-            }
-        };
-        
-        const rzp = new Razorpay(options);
-        rzp.open();
+            })
+            .catch(error => {
+                console.error('Booking Error:', error);
+                alert('A critical error occurred during booking. Please contact support.');
+                showFailure();
+            });
     }
-    
+
     function showSuccess() {
         prepaymentSummary.classList.add('hidden');
         paymentSuccess.classList.remove('hidden');
-        paymentSuccess.scrollIntoView({ behavior: 'smooth' });
+        paymentSuccess.scrollIntoView({
+            behavior: 'smooth'
+        });
+        // Reset the form and audio state for the next booking
+        mainBookingForm.reset();
+        resetRecordingState(true); 
     }
 
     function showFailure() {
         prepaymentSummary.classList.add('hidden');
         paymentFailed.classList.remove('hidden');
-        paymentFailed.scrollIntoView({ behavior: 'smooth' });
+        paymentFailed.scrollIntoView({
+            behavior: 'smooth'
+        });
     }
 });

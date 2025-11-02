@@ -189,6 +189,52 @@
                             </div>
                         </fieldset>
 
+                        <div class="form-row">
+                            <div>
+                                <label for="occupation">Your Occupation</label>
+                                <select id="occupation" name="occupation">
+                                    <option value="student">Student</option>
+                                    <option value="salaried_employee">Salaried Employee</option>
+                                    <option value="business_owner">Business Owner</option>
+                                    <option value="self_employed">Self-Employed</option>
+                                    <option value="unemployed">Unemployed</option>
+                                    <option value="homemaker">Homemaker</option>
+                                    <option value="retired">Retired</option>
+                                    <option value="farmer">Farmer</option>
+                                    <option value="teacher">Teacher</option>
+                                    <option value="healthcare_professional">Healthcare Professional</option>
+                                    <option value="government_employee">Government Employee</option>
+                                    <option value="ngo_worker">NGO Worker</option>
+                                    <option value="skilled_worker">Skilled Worker</option>
+                                    <option value="labourer">Labourer</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="qualification">Educational Qualification</label>
+                                <select id="qualification" name="qualification">
+                                    <option value="no formal education">No Formal Education</option>
+                                    <option value="pre primary education">Pre-Primary Education</option>
+                                    <option value="primary education">Primary Education</option>
+                                    <option value="middle school">Middle School</option>
+                                    <option value="secondary education">Secondary Education / High School</option>
+                                    <option value="ged">GED (General Educational Development)</option>
+                                    <option value="vocational qualification">Vocational Qualification</option>
+                                    <option value="technical education">Technical Education</option>
+                                    <option value="certificate program">Certificate Program</option>
+                                    <option value="associate degree">Associate Degree</option>
+                                    <option value="bachelor's degree">Bachelor's Degree</option>
+                                    <option value="post graduate diploma">Post-Graduate Diploma</option>
+                                    <option value="professional certification">Professional Certification</option>
+                                    <option value="master's degree">Master's Degree</option>
+                                    <option value="doctoral degree">Doctoral Degree (Ph.D., Ed.D., etc.)</option>
+                                    <option value="professional degree">Professional Degree (MD, JD, DDS, etc.)</option>
+                                    <option value="post doctoral studies">Post-Doctoral Studies</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <!-- Additional Information -->
                         <div>
                             <label for="how_learned">How did you learn about our service?</label>
