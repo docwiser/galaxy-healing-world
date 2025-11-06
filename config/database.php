@@ -173,6 +173,7 @@ class Database {
             "CREATE TABLE IF NOT EXISTS payments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
+                session_id INTEGER,
                 order_id VARCHAR(255) NOT NULL,
                 payment_id VARCHAR(255),
                 amount DECIMAL(10, 2) NOT NULL,
@@ -180,6 +181,7 @@ class Database {
                 status VARCHAR(50) DEFAULT 'created',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (session_id) REFERENCES sessions(id),
                 FOREIGN KEY (coupon_id) REFERENCES coupons(id)
             )",
 
@@ -322,6 +324,7 @@ class Database {
             "CREATE TABLE IF NOT EXISTS payments (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
+                session_id INT,
                 order_id VARCHAR(255) NOT NULL,
                 payment_id VARCHAR(255),
                 amount DECIMAL(10, 2) NOT NULL,
@@ -329,6 +332,7 @@ class Database {
                 status VARCHAR(50) DEFAULT 'created',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (session_id) REFERENCES sessions(id),
                 FOREIGN KEY (coupon_id) REFERENCES coupons(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             

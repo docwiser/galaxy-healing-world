@@ -47,7 +47,7 @@
                             <legend>Select verification method:</legend>
                             <div class="radio-group">
                                 <label>
-                                    <input type="radio" name="verify_method" value="phone" onchange="updateVerificationLabel()">
+                                    <input type="radio" name="verify_method" checked value="phone" onchange="updateVerificationLabel()">
                                     Phone Number
                                 </label>
                                 <label>

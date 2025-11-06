@@ -17,12 +17,12 @@ try {
     }
 
     // Validate file type and extension
-    $allowedMimeTypes = ['audio/webm', 'audio/mp3', 'audio/wav', 'audio/ogg'];
+    $allowedMimeTypes = ['video/webm', 'audio/webm', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/mpeg'];
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mimeType = $finfo->file($_FILES['audio_data']['tmp_name']);
 
     if (!in_array($mimeType, $allowedMimeTypes)) {
-        throw new Exception('Invalid file type. Only WEBM, MP3, WAV, or OGG are allowed.');
+        throw new Exception('Invalid file type. Only WEBM, MP3, WAV, or OGG are allowed. provided mimeType: ' . $mimeType);
     }
 
     // Sanitize filename and generate a unique name

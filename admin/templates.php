@@ -1,8 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/header.php';
-
+require_once __DIR__ . '/includes/header.php';
 // Initialize database connection
 $db = Database::getInstance()->getConnection();
 
@@ -80,8 +79,7 @@ $db = Database::getInstance()->getConnection();
 </div>
 
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
-
+<footer><p>&copy; copyright galaxy healing world</p></footer>
 <script>
 $(document).ready(function() {
     // Load templates on page load

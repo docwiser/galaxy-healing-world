@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/config.php';
+
 header('Content-Type: application/json');
 
 $configFile = __DIR__ . '/../includes/rzp.json';
@@ -15,4 +17,15 @@ if (json_last_error() !== JSON_ERROR_NONE || !isset($razorpay_config['key_id']))
     exit;
 }
 
-echo json_encode(['success' => true, 'key_id' => $razorpay_config['key_id']]);
+// Get payment settings from config
+$paymentSettings = Config::get('payment');
+
+echo json_encode([
+    'success' => true,
+    'config' => [
+        'payment' => [
+            'razorpay_key_id' => $razorpay_config['key_id'],
+            'first_session_amount' => $paymentSettings['first_session_amount'] ?? 500
+        ]
+    ]
+]);

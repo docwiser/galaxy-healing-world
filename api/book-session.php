@@ -2,7 +2,6 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../vendor/autoload.php';
-
 use Razorpay\Api\Api;
 use Razorpay\Api\Errors\SignatureVerificationError;
 
@@ -15,7 +14,8 @@ error_reporting(0);
 set_error_handler(function ($severity, $message, $file, $line) {
     throw new ErrorException($message, 0, $severity, $file, $line);
 });
-
+$configFile = __DIR__ . '/../includes/rzp.json';
+$razorpayEnv = json_decode(file_get_contents($configFile), true);
 try {
     $db = Database::getInstance()->getConnection();
 
@@ -119,8 +119,8 @@ try {
         $payment_config = Config::get('payment');
         
         // IMPORTANT: Ensure your Razorpay keys are set in the config file.
-        $razorpay_key_id = $payment_config['razorpay_key_id'] ?? '';
-        $razorpay_key_secret = $payment_config['razorpay_key_secret'] ?? '';
+        $razorpay_key_id = $razorpayEnv['key_id'] ?? '';
+        $razorpay_key_secret = $razorpayEnv['key_secret'] ?? '';
 
         if (empty($razorpay_key_id) || empty($razorpay_key_secret)) {
             throw new Exception('Razorpay API keys are not configured.');
@@ -136,10 +136,14 @@ try {
             ];
 
             $api->utility->verifyPaymentSignature($attributes);
-            
+
             // Signature is valid, update payment status and associate session
             $stmt = $db->prepare("UPDATE payments SET status = 'completed', payment_id = ?, session_id = ? WHERE order_id = ? AND user_id = ?");
             $stmt->execute([$_POST['razorpay_payment_id'], $session_id, $_POST['razorpay_order_id'], $user_id]);
+
+            // Update user status to payment-made
+            $stmt = $db->prepare("UPDATE users SET status = 'payment-made', payment_made = payment_made + (SELECT amount FROM payments WHERE order_id = ? LIMIT 1) WHERE id = ?");
+            $stmt->execute([$_POST['razorpay_order_id'], $user_id]);
 
         } catch(SignatureVerificationError $e) {
             // Signature is invalid
@@ -152,8 +156,12 @@ try {
          // This block handles cases where payment is not made (e.g. for a free session coupon)
          // or if payment is handled differently.
          if (isset($_POST['razorpay_order_id'])) {
-             $stmt = $db->prepare("UPDATE payments SET session_id = ? WHERE order_id = ?");
+             $stmt = $db->prepare("UPDATE payments SET session_id = ?, status = 'completed' WHERE order_id = ?");
              $stmt->execute([$session_id, $_POST['razorpay_order_id']]);
+
+             // For zero payment (100% coupon), still update status
+             $stmt = $db->prepare("UPDATE users SET status = 'payment-made' WHERE id = ?");
+             $stmt->execute([$user_id]);
          }
     }
 

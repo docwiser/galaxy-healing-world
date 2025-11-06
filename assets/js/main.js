@@ -121,6 +121,74 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.fillAddressDetails = function() {};
 
+    // --- Verification Form Handler ---
+    if (verifyForm) {
+        verifyForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const method = document.querySelector('input[name="verify_method"]:checked');
+            const value = document.getElementById('verify_value').value.trim();
+
+            if (!method || !value) {
+                alert('Please select a verification method and enter your details.');
+                return;
+            }
+
+            const verificationMessage = document.getElementById('verification-message');
+            verificationMessage.textContent = 'Verifying...';
+            verificationMessage.className = 'message warning';
+            verificationMessage.classList.remove('hidden');
+
+            fetch('api/verify-user.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    method: method.value,
+                    value: value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    // Store user ID and populate form
+                    currentUserId = data.data.id;
+
+                    // Populate main form with verified user data
+                    document.getElementById('name').value = data.data.name || '';
+                    document.getElementById('email').value = data.data.email || '';
+                    document.getElementById('mobile').value = data.data.mobile || '';
+                    if (data.data.dob) document.getElementById('dob').value = data.data.dob;
+                    if (data.data.age) document.getElementById('approximate_age').value = data.data.age;
+
+                    verificationMessage.textContent = 'User verified successfully! Your information has been loaded.';
+                    verificationMessage.className = 'message success';
+
+                    // Show booking form and hide verification
+                    verificationForm.classList.add('hidden');
+                    bookingForm.classList.remove('hidden');
+                    bookingForm.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    verificationMessage.textContent = data.message || 'No user found. Please fill out the registration form below.';
+                    verificationMessage.className = 'message warning';
+
+                    // Show booking form for new registration
+                    setTimeout(() => {
+                        verificationForm.classList.add('hidden');
+                        bookingForm.classList.remove('hidden');
+                        bookingForm.scrollIntoView({ behavior: 'smooth' });
+                    }, 2000);
+                }
+            })
+            .catch(error => {
+                console.error('Verification error:', error);
+                verificationMessage.textContent = 'Error verifying user. Please try again.';
+                verificationMessage.className = 'message error';
+            });
+        });
+    }
+
     // --- Event Listeners ---
     const pincodeInput = document.getElementById('pincode');
     pincodeInput.addEventListener('input', function() {
@@ -188,7 +256,8 @@ document.addEventListener('DOMContentLoaded', function() {
     startRecordingBtn.addEventListener('click', async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                audio: true
+                audio: true,
+                video: false,
             });
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.ondataavailable = event => {
@@ -272,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function uploadRecording() {
         const audioBlob = new Blob(audioChunks, {
-            type: 'audio/webm'
+            type: 'audio/mpeg'
         });
         const formData = new FormData();
         formData.append('audio_data', audioBlob, 'recording.webm');
@@ -329,9 +398,11 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data && data.success) {
                     currentDiscount = parseFloat(data.discount);
+                    appliedCouponCode = couponCode;
                     alert(`Coupon "${couponCode}" applied!`);
                 } else {
                     currentDiscount = 0;
+                    appliedCouponCode = null;
                     alert(data.message || 'Invalid or expired coupon code.');
                 }
                 updatePaymentSummary();
@@ -351,6 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
     removeCouponBtn.addEventListener('click', function() {
         document.getElementById('coupon-code').value = '';
         currentDiscount = 0;
+        appliedCouponCode = null;
         alert('Coupon removed.');
         updatePaymentSummary();
     });
@@ -367,7 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     bookNowBtn.addEventListener('click', function() {
-        finalizeBooking();
+        finalizeBooking(null, true);
     });
 
     payNowBtn.addEventListener('click', function() {
@@ -380,53 +452,46 @@ document.addEventListener('DOMContentLoaded', function() {
         triggerRazorpay();
     });
 
+    let currentUserId = null;
+    let appliedCouponCode = null;
+
     function triggerRazorpay() {
         if (currentTotal <= 0) return;
 
         payNowBtn.disabled = true;
         payNowBtn.textContent = 'Processing...';
 
-<<<<<<< HEAD
-        const options = {
-            key: "rzp_live_RW2PNj1n17fMew", 
-            amount: currentTotal * 100,
-            currency: "INR",
-            name: "Galaxy Healing World",
-            description: "Therapy Session Booking",
-            image: "https://www.galaxyhealingworld.com/assets/images/logo.png",
-            handler: function (response){
-                console.log('Payment successful:', response);
-                payNowBtn.disabled = false;
-                payNowBtn.textContent = 'Pay Now';
-                showSuccess();
-            },
-            prefill: {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                contact: document.getElementById('mobile').value
-            },
-            theme: {
-                color: "#3399cc"
-            },
-            modal: {
-                ondismiss: function(){
-                    console.log('Payment modal dismissed.');
-=======
-        const formData = new FormData();
-        formData.append('amount', currentTotal);
-        formData.append('email', document.getElementById('email').value);
-        
+        const orderData = {
+            amount: currentSubtotal,
+            email: document.getElementById('email').value,
+            name: document.getElementById('name').value,
+            mobile: document.getElementById('mobile').value,
+            coupon_code: appliedCouponCode,
+            user_id: currentUserId
+        };
+
         fetch('api/create-order.php', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orderData)
             })
             .then(response => response.json())
             .then(order => {
                 if (!order.success) {
                     alert('Could not create a payment order. Please try again.');
->>>>>>> 3a363eaccf806f51d785b4cbcdf6e3f590f28906
                     payNowBtn.disabled = false;
                     payNowBtn.textContent = 'Pay Now';
+                    return;
+                }
+
+                // Store user_id for booking submission
+                currentUserId = order.user_id;
+
+                // If zero payment (100% coupon), go directly to booking
+                if (!order.id || order.amount === 0) {
+                    finalizeBooking(null, true, order);
                     return;
                 }
 
@@ -439,7 +504,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     image: "https://www.galaxyhealingworld.com/assets/images/logo.png",
                     order_id: order.id,
                     handler: function(response) {
-                        finalizeBooking(response);
+                        finalizeBooking(response, false, order);
                     },
                     prefill: {
                         name: document.getElementById('name').value,
@@ -468,17 +533,33 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    function finalizeBooking(paymentData = {}) {
+    function finalizeBooking(paymentData = null, isZeroPayment = false, orderData = null) {
         const formData = new FormData(mainBookingForm);
 
-        if (paymentData.razorpay_payment_id) {
+        // Add user_id if available
+        if (currentUserId) {
+            formData.append('user_id', currentUserId);
+        }
+
+        // Add payment data if payment was made
+        if (paymentData && paymentData.razorpay_payment_id) {
             formData.append('razorpay_payment_id', paymentData.razorpay_payment_id);
             formData.append('razorpay_order_id', paymentData.razorpay_order_id);
             formData.append('razorpay_signature', paymentData.razorpay_signature);
         }
 
-        formData.append('occupation', document.getElementById('occupation').value);
-        formData.append('qualification', document.getElementById('qualification').value);
+        // Add order_id for zero payment bookings
+        if (isZeroPayment && orderData && orderData.id) {
+            formData.append('razorpay_order_id', orderData.id);
+        }
+
+        // Ensure occupation and qualification are included (they should be in form already)
+        if (!formData.has('occupation')) {
+            formData.append('occupation', document.getElementById('occupation').value);
+        }
+        if (!formData.has('qualification')) {
+            formData.append('qualification', document.getElementById('qualification').value);
+        }
 
 
         fetch('api/book-session.php', {

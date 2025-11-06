@@ -90,7 +90,7 @@ try {
     $totalAmount = $amount - $discount;
 
     if ($totalAmount <= 0) {
-        echo json_encode(['success' => true, 'order_id' => null, 'amount' => 0, 'user_id' => $userId]);
+        echo json_encode(['success' => true, 'id' => null, 'amount' => 0, 'user_id' => $userId, 'coupon_id' => $couponId]);
         exit;
     }
 
@@ -106,7 +106,13 @@ try {
     $stmt = $db->prepare("INSERT INTO payments (user_id, order_id, amount, coupon_id, status) VALUES (?, ?, ?, ?, 'created')");
     $stmt->execute([$userId, $razorpayOrder['id'], $totalAmount, $couponId]);
 
-    echo json_encode(['success' => true, 'order_id' => $razorpayOrder['id'], 'amount' => $totalAmount, 'user_id' => $userId]);
+    echo json_encode([
+        'success' => true,
+        'id' => $razorpayOrder['id'],
+        'amount' => $totalAmount * 100, // Return amount in paise for Razorpay
+        'user_id' => $userId,
+        'coupon_id' => $couponId
+    ]);
 
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()]);

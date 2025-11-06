@@ -17,7 +17,7 @@
     
     <div class="header-actions">
         <div class="user-menu">
-            <button class="user-trigger">
+            <button aria-hidden="true" class="user-trigger">
                 <div class="user-avatar">
                     <?php echo strtoupper(substr($_SESSION['admin_username'] ?? 'A', 0, 2)); ?>
                 </div>
