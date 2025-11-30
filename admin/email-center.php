@@ -57,9 +57,12 @@ $db = Database::getInstance()->getConnection();
 
 <script>
 $(document).ready(function() {
+    let templates = [];
+
     // Load templates
     $.get('../api/get-templates.php', function(response) {
         if (response.success) {
+            templates = response.templates;
             const select = $('#template-select');
             response.templates.forEach(template => {
                 select.append(`<option value="${template.id}">${template.name}</option>`);
@@ -80,12 +83,15 @@ $(document).ready(function() {
     // Handle template selection
     $('#template-select').change(function() {
         const templateId = $(this).val();
+        const contentTextarea = $('#email-content');
+        
         if (templateId) {
-            $.get('../api/get-templates.php', { id: templateId }, function(response) {
-                if (response.success && response.templates.length) {
-                    $('#email-content').val(response.templates[0].content);
-                }
-            });
+            const selectedTemplate = templates.find(t => t.id == templateId);
+            if (selectedTemplate) {
+                contentTextarea.val(selectedTemplate.content);
+            }
+        } else {
+            contentTextarea.val('');
         }
     });
 

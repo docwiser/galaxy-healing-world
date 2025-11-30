@@ -11,7 +11,7 @@ try {
         $stmt->execute([$_GET['id']]);
         $templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
-        $stmt = $db->query("SELECT id, name FROM templates ORDER BY name ASC");
+        $stmt = $db->query("SELECT * FROM templates ORDER BY name ASC");
         $templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
