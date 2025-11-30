@@ -21,6 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recipient_type = $_POST['recipient_type'] ?? '';
         $subject = trim($_POST['subject'] ?? '');
         $message = trim($_POST['message'] ?? '');
+        $attachments = isset($_POST['attachments']) ? json_decode($_POST['attachments'], true) : [];
+
 
         if ($subject && $message) {
             try {
@@ -71,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($recipientList)) {
                     $error = "No valid recipients found";
                 } else {
-                    $results = $emailHelper->sendBulkEmail($recipientList, $subject, $message, true);
+                    $results = $emailHelper->sendBulkEmail($recipientList, $subject, $message, true, $attachments);
                     
                     $sent = 0;
                     $failed = 0;
@@ -215,7 +217,7 @@ $allUsers = $stmt->fetchAll();
                             <h3>Compose Email</h3>
                         </div>
                         <div class="card-body">
-                            <form method="POST" class="email-form">
+                            <form id="emailForm" method="POST" class="email-form">
                                 <input type="hidden" name="action" value="send_email">
                                 
                                 <div class="form-group">
@@ -289,6 +291,14 @@ $allUsers = $stmt->fetchAll();
                                               aria-describedby="message-help"></textarea>
                                     <small id="message-help">HTML formatting is supported</small>
                                 </div>
+
+                                <div class="form-group">
+                                    <label for="attachments">Attachments</label>
+                                    <input type="file" id="attachments" name="attachments[]" multiple class="form-control">
+                                    <small>You can select multiple files</small>
+                                </div>
+
+                                <div id="attachment-list"></div>
                                 
                                 <div class="email-templates">
                                     <label>Quick Templates:</label>
@@ -412,6 +422,7 @@ $allUsers = $stmt->fetchAll();
         }
 
         let templates = [];
+        let attachments = [];
 
         $(document).ready(function() {
             // Load templates
@@ -433,7 +444,87 @@ $allUsers = $stmt->fetchAll();
                     });
                 }
             });
+
+            // Attachment handling
+            $('#attachments').on('change', function() {
+                const files = $(this)[0].files;
+                for (let i = 0; i < files.length; i++) {
+                    uploadFile(files[i]);
+                }
+            });
+
+            // Email form submission
+            $('#emailForm').on('submit', function(e) {
+                e.preventDefault();
+                const sendBtn = document.getElementById('sendEmailBtn');
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = '<i data-feather="loader"></i> Sending...';
+
+                const formData = new FormData(this);
+                formData.append('attachments', JSON.stringify(attachments));
+
+                $.ajax({
+                    url: 'email.php',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        location.reload();
+                    }
+                });
+            });
         });
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('attachment', file);
+
+            $.ajax({
+                url: '../api/upload-attachment.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        attachments.push(response.file);
+                        renderAttachments();
+                    }
+                }
+            });
+        }
+
+        function removeAttachment(filePath) {
+            $.post('../api/remove-attachment.php', { file: filePath }, function(response) {
+                if (response.success) {
+                    attachments = attachments.filter(attachment => attachment.path !== filePath);
+                    renderAttachments();
+                }
+            });
+        }
+
+        function renderAttachments() {
+            const attachmentList = $('#attachment-list');
+            attachmentList.empty();
+            attachments.forEach(attachment => {
+                const attachmentItem = $('<div>', { class: 'attachment-item' });
+                attachmentItem.html(`
+                    <span>${attachment.name} (${formatBytes(attachment.size)}) - ${attachment.type}</span>
+                    <button type="button" class="btn btn-small btn-danger" onclick="removeAttachment('${attachment.path}')">Remove</button>
+                `);
+                attachmentList.append(attachmentItem);
+            });
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
 
         function loadTemplate(templateId) {
             const messageField = document.getElementById('message');
@@ -443,29 +534,6 @@ $allUsers = $stmt->fetchAll();
                 messageField.value = selectedTemplate.content;
             }
         }
-
-        // Form submission handling
-        document.querySelector('.email-form').addEventListener('submit', function(e) {
-            const sendBtn = document.getElementById('sendEmailBtn');
-            sendBtn.disabled = true;
-            sendBtn.innerHTML = '<i data-feather="loader"></i> Sending...';
-            
-            // Re-enable button after 5 seconds to prevent permanent disable on error
-            setTimeout(() => {
-                sendBtn.disabled = false;
-                sendBtn.innerHTML = '<i data-feather="send"></i> Send Email';
-                feather.replace();
-            }, 5000);
-        });
-
-        // Character counter for message field
-        const messageField = document.getElementById('message');
-        const messageHelp = document.getElementById('message-help');
-        
-        messageField.addEventListener('input', function() {
-            const length = this.value.length;
-            messageHelp.textContent = `HTML formatting is supported (${length} characters)`;
-        });
     </script>
 </body>
 </html>

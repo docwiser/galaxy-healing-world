@@ -38,7 +38,7 @@ class EmailHelper {
         }
     }
     
-    public function sendEmail($to, $toName, $subject, $body, $isHTML = true) {
+    public function sendEmail($to, $toName, $subject, $body, $isHTML = true, $attachments = []) {
         try {
             // Recipients
             $this->mailer->addAddress($to, $toName);
@@ -51,14 +51,20 @@ class EmailHelper {
             if (!$isHTML) {
                 $this->mailer->AltBody = $body;
             }
+
+            // Attachments
+            foreach ($attachments as $attachment) {
+                $this->mailer->addAttachment($attachment['path'], $attachment['name']);
+            }
             
             $result = $this->mailer->send();
             
             // Log email
             $this->logEmail($to, $toName, $subject, $body, $result ? 'sent' : 'failed');
             
-            // Clear addresses for next email
-            $this->mailer->clearAddresses();
+            // Clear addresses and attachments for next email
+            $this->mailer->clearAllRecipients();
+            $this->mailer->clearAttachments();
             
             return $result;
         } catch (Exception $e) {
@@ -67,7 +73,7 @@ class EmailHelper {
         }
     }
     
-    public function sendBulkEmail($recipients, $subject, $body, $isHTML = true) {
+    public function sendBulkEmail($recipients, $subject, $body, $isHTML = true, $attachments = []) {
         $results = [];
         
         foreach ($recipients as $recipient) {
@@ -77,7 +83,8 @@ class EmailHelper {
                     $recipient['name'],
                     $subject,
                     $body,
-                    $isHTML
+                    $isHTML,
+                    $attachments
                 );
                 $results[] = [
                     'email' => $recipient['email'],
