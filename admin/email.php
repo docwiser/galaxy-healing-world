@@ -293,21 +293,7 @@ $allUsers = $stmt->fetchAll();
                                 <div class="email-templates">
                                     <label>Quick Templates:</label>
                                     <div class="template-buttons">
-                                        <button type="button" class="btn btn-small btn-outline" 
-                                                onclick="loadTemplate('welcome')"
-                                                aria-label="Load welcome email template">
-                                            Welcome Email
-                                        </button>
-                                        <button type="button" class="btn btn-small btn-outline" 
-                                                onclick="loadTemplate('reminder')"
-                                                aria-label="Load appointment reminder template">
-                                            Appointment Reminder
-                                        </button>
-                                        <button type="button" class="btn btn-small btn-outline" 
-                                                onclick="loadTemplate('followup')"
-                                                aria-label="Load follow-up email template">
-                                            Follow-up
-                                        </button>
+                                        <!-- Templates will be loaded here -->
                                     </div>
                                 </div>
                                 
@@ -402,7 +388,7 @@ $allUsers = $stmt->fetchAll();
             </main>
         </div>
     </div>
-
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
         feather.replace();
@@ -425,59 +411,36 @@ $allUsers = $stmt->fetchAll();
             }
         }
 
-        function loadTemplate(templateType) {
-            const subjectField = document.getElementById('subject');
-            const messageField = document.getElementById('message');
-            
-            const templates = {
-                welcome: {
-                    subject: 'Welcome to <?php echo Config::get('site.name'); ?>',
-                    message: `<p>Dear [Name],</p>
+        let templates = [];
 
-<p>Welcome to <?php echo Config::get('site.name'); ?>! We're excited to have you join our community.</p>
-
-<p>Our team is dedicated to providing you with the best possible therapy experience. If you have any questions or need assistance, please don't hesitate to reach out to us.</p>
-
-<p>We look forward to supporting you on your healing journey.</p>
-
-<p>Best regards,<br>
-The <?php echo Config::get('site.name'); ?> Team</p>`
-                },
-                reminder: {
-                    subject: 'Appointment Reminder - <?php echo Config::get('site.name'); ?>',
-                    message: `<p>Dear [Name],</p>
-
-<p>This is a friendly reminder about your upcoming therapy session:</p>
-
-<p><strong>Date:</strong> [Date]<br>
-<strong>Time:</strong> [Time]<br>
-<strong>Method:</strong> [Contact Method]</p>
-
-<p>Please make sure you're available at the scheduled time. If you need to reschedule, please contact us as soon as possible.</p>
-
-<p>We look forward to our session together.</p>
-
-<p>Best regards,<br>
-The <?php echo Config::get('site.name'); ?> Team</p>`
-                },
-                followup: {
-                    subject: 'Follow-up - How are you doing?',
-                    message: `<p>Dear [Name],</p>
-
-<p>We hope you're doing well since our last session. We wanted to check in and see how you're feeling.</p>
-
-<p>Your progress and well-being are important to us. If you have any questions, concerns, or would like to schedule another session, please don't hesitate to reach out.</p>
-
-<p>Remember, we're here to support you every step of the way.</p>
-
-<p>Take care,<br>
-The <?php echo Config::get('site.name'); ?> Team</p>`
+        $(document).ready(function() {
+            // Load templates
+            $.get('../api/get-templates.php', function(response) {
+                if (response.success) {
+                    templates = response.templates;
+                    const container = $('.template-buttons');
+                    container.empty(); // Clear existing buttons
+                    templates.forEach(template => {
+                        const button = $('<button>', {
+                            type: 'button',
+                            class: 'btn btn-small btn-outline',
+                            text: template.name,
+                            click: function() {
+                                loadTemplate(template.id);
+                            }
+                        });
+                        container.append(button);
+                    });
                 }
-            };
+            });
+        });
+
+        function loadTemplate(templateId) {
+            const messageField = document.getElementById('message');
+            const selectedTemplate = templates.find(t => t.id == templateId);
             
-            if (templates[templateType]) {
-                subjectField.value = templates[templateType].subject;
-                messageField.value = templates[templateType].message;
+            if (selectedTemplate) {
+                messageField.value = selectedTemplate.content;
             }
         }
 
