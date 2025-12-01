@@ -401,7 +401,6 @@ $allUsers = $stmt->fetchAll();
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
-        feather.replace();
 
         function toggleRecipientInput() {
             const recipientType = document.querySelector('input[name="recipient_type"]:checked').value;

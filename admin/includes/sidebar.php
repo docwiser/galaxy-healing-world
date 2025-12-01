@@ -4,7 +4,8 @@
             <?php echo Config::get('site.name'); ?>
         </a>
     </div>
-    
+<details name="navmenu">
+<summary role="button">Menu</summary>    
     <nav class="sidebar-nav">
         <a role="menuitem" href="index.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : ''; ?>">
             <i data-feather="home"></i>
@@ -40,6 +41,10 @@
             <i data-feather="mail"></i>
             Email Center
         </a>
+        <a role="menuitem" href="templates.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'templates.php' ? 'active' : ''; ?>">
+            <i data-feather="mail"></i>
+            Email Templates
+        </a>
         
         <a role="menuitem" href="reports.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'active' : ''; ?>">
             <i data-feather="bar-chart-2"></i>
@@ -56,4 +61,5 @@
             Logout
         </a>
     </nav>
+</details>
 </div>

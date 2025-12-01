@@ -106,7 +106,6 @@ $db = Database::getInstance()->getConnection();
 
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
-        feather.replace();
 
         $(document).ready(function() {
             // Load templates on page load
