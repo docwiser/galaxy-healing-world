@@ -16,7 +16,7 @@ $pdo = $db->getConnection();
 // Handle email sending
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    
+
     if ($action === 'send_email') {
         $recipient_type = $_POST['recipient_type'] ?? '';
         $subject = trim($_POST['subject'] ?? '');
@@ -69,12 +69,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 }
-                
+
                 if (empty($recipientList)) {
                     $error = "No valid recipients found";
                 } else {
                     $results = $emailHelper->sendBulkEmail($recipientList, $subject, $message, true, $attachments);
-                    
+
                     $sent = 0;
                     $failed = 0;
                     foreach ($results as $result) {
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $failed++;
                         }
                     }
-                    
+
                     $success = "Email sent successfully to $sent recipient(s)";
                     if ($failed > 0) {
                         $success .= " ($failed failed)";
@@ -134,6 +134,7 @@ $allUsers = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -141,14 +142,90 @@ $allUsers = $stmt->fetchAll();
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.css">
+    <style>
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .file-list {
+            margin-bottom: 1.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+        }
+
+        .file-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .file-meta {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+    </style>
 </head>
+
 <body>
     <div class="admin-layout">
         <?php include 'includes/sidebar.php'; ?>
-        
+
         <div class="admin-content">
             <?php include 'includes/header.php'; ?>
-            
+
             <main class="main-content">
                 <div class="page-header">
                     <h1>Email Center</h1>
@@ -178,7 +255,7 @@ $allUsers = $stmt->fetchAll();
                             <div class="stat-label">Total Emails</div>
                         </div>
                     </div>
-                    
+
                     <div class="stat-card">
                         <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
                             <i data-feather="check-circle" aria-hidden="true"></i>
@@ -188,7 +265,7 @@ $allUsers = $stmt->fetchAll();
                             <div class="stat-label">Successfully Sent</div>
                         </div>
                     </div>
-                    
+
                     <div class="stat-card">
                         <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
                             <i data-feather="x-circle" aria-hidden="true"></i>
@@ -198,7 +275,7 @@ $allUsers = $stmt->fetchAll();
                             <div class="stat-label">Failed</div>
                         </div>
                     </div>
-                    
+
                     <div class="stat-card">
                         <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
                             <i data-feather="users" aria-hidden="true"></i>
@@ -219,25 +296,25 @@ $allUsers = $stmt->fetchAll();
                         <div class="card-body">
                             <form id="emailForm" method="POST" class="email-form">
                                 <input type="hidden" name="action" value="send_email">
-                                
+
                                 <div class="form-group">
                                     <label>Recipients</label>
                                     <div class="recipient-options">
                                         <label class="radio-label">
                                             <input type="radio" name="recipient_type" value="all"
-                                                   onchange="toggleRecipientInput()" checked>
+                                                onchange="toggleRecipientInput()" checked>
                                             <span class="radio-custom"></span>
                                             Send to all registered users (<?php echo $userCount; ?> users)
                                         </label>
                                         <label class="radio-label">
                                             <input type="radio" name="recipient_type" value="selected"
-                                                   onchange="toggleRecipientInput()">
+                                                onchange="toggleRecipientInput()">
                                             <span class="radio-custom"></span>
                                             Send to selected users
                                         </label>
                                         <label class="radio-label">
                                             <input type="radio" name="recipient_type" value="custom"
-                                                   onchange="toggleRecipientInput()">
+                                                onchange="toggleRecipientInput()">
                                             <span class="radio-custom"></span>
                                             Send to custom email addresses
                                         </label>
@@ -249,7 +326,8 @@ $allUsers = $stmt->fetchAll();
                                     <div class="user-selection-grid">
                                         <?php foreach ($allUsers as $user): ?>
                                             <label class="checkbox-label">
-                                                <input type="checkbox" name="selected_users[]" value="<?php echo $user['id']; ?>">
+                                                <input type="checkbox" name="selected_users[]"
+                                                    value="<?php echo $user['id']; ?>">
                                                 <span class="checkbox-custom"></span>
                                                 <span class="user-info">
                                                     <strong><?php echo htmlspecialchars($user['name']); ?></strong>
@@ -257,7 +335,7 @@ $allUsers = $stmt->fetchAll();
                                                     <small>ID: <?php echo htmlspecialchars($user['client_id']); ?></small>
                                                     <small>
                                                         <span class="status-badge-inline"
-                                                              style="background-color: <?php echo htmlspecialchars($user['category_color'] ?? '#6b7280'); ?>">
+                                                            style="background-color: <?php echo htmlspecialchars($user['category_color'] ?? '#6b7280'); ?>">
                                                             <?php echo htmlspecialchars(ucwords(str_replace('-', ' ', $user['status']))); ?>
                                                         </span>
                                                     </small>
@@ -271,42 +349,42 @@ $allUsers = $stmt->fetchAll();
                                 <div class="form-group" id="customEmailInput" style="display: none;">
                                     <label for="recipients">Email Addresses</label>
                                     <textarea id="recipients" name="recipients" rows="3" class="form-control"
-                                              placeholder="Enter email addresses separated by commas"
-                                              aria-describedby="recipients-help"></textarea>
+                                        placeholder="Enter email addresses separated by commas"
+                                        aria-describedby="recipients-help"></textarea>
                                     <small id="recipients-help">Separate multiple email addresses with commas</small>
                                 </div>
-                                
+
                                 <div class="form-group">
                                     <label for="subject">Subject <span class="required">*</span></label>
                                     <input type="text" id="subject" name="subject" required class="form-control"
-                                           placeholder="Enter email subject"
-                                           aria-describedby="subject-help">
+                                        placeholder="Enter email subject" aria-describedby="subject-help">
                                     <small id="subject-help">Clear, descriptive subject line</small>
                                 </div>
-                                
+
                                 <div class="form-group">
                                     <label for="message">Message <span class="required">*</span></label>
                                     <textarea id="message" name="message" rows="10" required class="form-control"
-                                              placeholder="Enter your email message here..."
-                                              aria-describedby="message-help"></textarea>
+                                        placeholder="Enter your email message here..."
+                                        aria-describedby="message-help"></textarea>
                                     <small id="message-help">HTML formatting is supported</small>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="attachments">Attachments</label>
-                                    <input type="file" id="attachments" name="attachments[]" multiple class="form-control">
+                                    <input type="file" id="attachments" name="attachments[]" multiple
+                                        class="form-control">
                                     <small>You can select multiple files</small>
                                 </div>
 
                                 <div id="attachment-list"></div>
-                                
+
                                 <div class="email-templates">
                                     <label>Quick Templates:</label>
                                     <div class="template-buttons">
                                         <!-- Templates will be loaded here -->
                                     </div>
                                 </div>
-                                
+
                                 <button type="submit" class="btn btn-primary" id="sendEmailBtn">
                                     <i data-feather="send" aria-hidden="true"></i>
                                     Send Email
@@ -345,8 +423,9 @@ $allUsers = $stmt->fetchAll();
                                                 </div>
                                             </div>
                                             <div class="email-status">
-                                                <span class="status-badge <?php echo $email['status'] === 'sent' ? 'status-success' : 'status-error'; ?>"
-                                                      aria-label="Email status: <?php echo $email['status']; ?>">
+                                                <span
+                                                    class="status-badge <?php echo $email['status'] === 'sent' ? 'status-success' : 'status-error'; ?>"
+                                                    aria-label="Email status: <?php echo $email['status']; ?>">
                                                     <?php echo ucfirst($email['status']); ?>
                                                 </span>
                                             </div>
@@ -366,31 +445,35 @@ $allUsers = $stmt->fetchAll();
                             <i data-feather="shield" aria-hidden="true"></i>
                             <div>
                                 <h4>Privacy & Consent</h4>
-                                <p>Only send emails to users who have consented to receive communications. Respect privacy preferences.</p>
+                                <p>Only send emails to users who have consented to receive communications. Respect
+                                    privacy preferences.</p>
                             </div>
                         </div>
-                        
+
                         <div class="info-item">
                             <i data-feather="edit-3" aria-hidden="true"></i>
                             <div>
                                 <h4>Content Quality</h4>
-                                <p>Write clear, professional content. Use proper grammar and maintain a respectful tone.</p>
+                                <p>Write clear, professional content. Use proper grammar and maintain a respectful tone.
+                                </p>
                             </div>
                         </div>
-                        
+
                         <div class="info-item">
                             <i data-feather="clock" aria-hidden="true"></i>
                             <div>
                                 <h4>Timing</h4>
-                                <p>Send emails at appropriate times. Avoid excessive frequency to prevent spam complaints.</p>
+                                <p>Send emails at appropriate times. Avoid excessive frequency to prevent spam
+                                    complaints.</p>
                             </div>
                         </div>
-                        
+
                         <div class="info-item">
                             <i data-feather="code" aria-hidden="true"></i>
                             <div>
                                 <h4>HTML Support</h4>
-                                <p>Basic HTML formatting is supported. Use simple tags like &lt;b&gt;, &lt;i&gt;, &lt;p&gt;, and &lt;br&gt;.</p>
+                                <p>Basic HTML formatting is supported. Use simple tags like &lt;b&gt;, &lt;i&gt;,
+                                    &lt;p&gt;, and &lt;br&gt;.</p>
                             </div>
                         </div>
                     </div>
@@ -398,6 +481,28 @@ $allUsers = $stmt->fetchAll();
             </main>
         </div>
     </div>
+
+    <!-- Upload Confirmation Modal -->
+    <div id="uploadModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Upload</h3>
+            </div>
+            <div class="modal-body">
+                <p class="mb-4">Do you want to upload these files as attachments?</p>
+                <div id="modalFileList" class="file-list">
+                    <!-- Files will be listed here -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeUploadModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmUpload()">
+                    <i data-feather="upload"></i> Upload
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
@@ -422,6 +527,7 @@ $allUsers = $stmt->fetchAll();
 
         let templates = [];
         let attachments = [];
+        let pendingFiles = [];
 
         $(document).ready(function() {
             // Load templates
@@ -447,8 +553,8 @@ $allUsers = $stmt->fetchAll();
             // Attachment handling
             $('#attachments').on('change', function() {
                 const files = $(this)[0].files;
-                for (let i = 0; i < files.length; i++) {
-                    uploadFile(files[i]);
+                if (files.length > 0) {
+                    showUploadModal(files);
                 }
             });
 
@@ -470,37 +576,95 @@ $allUsers = $stmt->fetchAll();
                     contentType: false,
                     success: function(response) {
                         location.reload();
+                    },
+                    error: function() {
+                        alert('Error sending email');
+                        sendBtn.disabled = false;
+                        sendBtn.innerHTML = '<i data-feather="send"></i> Send Email';
                     }
                 });
             });
         });
 
-        function uploadFile(file) {
-            const formData = new FormData();
-            formData.append('attachment', file);
+        function showUploadModal(files) {
+            pendingFiles = Array.from(files);
+            const list = $('#modalFileList');
+            list.empty();
 
-            $.ajax({
-                url: '../api/upload-attachment.php',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        attachments.push(response.file);
-                        renderAttachments();
+            pendingFiles.forEach(file => {
+                const item = $('<div>', { class: 'file-item' });
+                item.html(`
+                    <div class="file-info">
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-meta">${file.type || 'Unknown type'} - ${formatBytes(file.size)}</span>
+                    </div>
+                `);
+                list.append(item);
+            });
+
+            $('#uploadModal').css('display', 'flex');
+        }
+
+        function closeUploadModal() {
+            $('#uploadModal').hide();
+            $('#attachments').val(''); // Clear input
+            pendingFiles = [];
+        }
+
+        function confirmUpload() {
+            const uploadPromises = pendingFiles.map(file => uploadFile(file));
+            
+            Promise.all(uploadPromises).then(() => {
+                closeUploadModal();
+            });
+        }
+
+        function uploadFile(file) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('attachment', file);
+
+                $.ajax({
+                    url: '../api/upload-attachment.php',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        try {
+                            const res = typeof response === 'string' ? JSON.parse(response) : response;
+                            if (res.success) {
+                                attachments.push(res.file);
+                                renderAttachments();
+                            }
+                            resolve(res);
+                        } catch (e) {
+                            console.error('Error parsing response', e);
+                            resolve({ success: false });
+                        }
+                    },
+                    error: function(err) {
+                        console.error('Upload failed', err);
+                        resolve({ success: false });
                     }
-                }
+                });
             });
         }
 
         function removeAttachment(filePath) {
-            $.post('../api/remove-attachment.php', { file: filePath }, function(response) {
-                if (response.success) {
-                    attachments = attachments.filter(attachment => attachment.path !== filePath);
-                    renderAttachments();
-                }
-            });
+            if (confirm('Are you sure you want to remove this attachment?')) {
+                $.post('../api/remove-attachment.php', { file: filePath }, function(response) {
+                    try {
+                        const res = typeof response === 'string' ? JSON.parse(response) : response;
+                        if (res.success) {
+                            attachments = attachments.filter(attachment => attachment.path !== filePath);
+                            renderAttachments();
+                        }
+                    } catch (e) {
+                        console.error('Error parsing response', e);
+                    }
+                });
+            }
         }
 
         function renderAttachments() {
@@ -528,11 +692,12 @@ $allUsers = $stmt->fetchAll();
         function loadTemplate(templateId) {
             const messageField = document.getElementById('message');
             const selectedTemplate = templates.find(t => t.id == templateId);
-            
+
             if (selectedTemplate) {
                 messageField.value = selectedTemplate.content;
             }
         }
     </script>
 </body>
+
 </html>
