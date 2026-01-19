@@ -523,7 +523,15 @@ $sessions = $stmt->fetchAll();
                         <h4>Session Details</h4>
                         <div class="form-group">
                             <label for="purpose_of_contact">Purpose of Contact</label>
-                            <textarea id="purpose_of_contact" name="purpose_of_contact" rows="3" class="form-control">${session.purpose_of_contact || ''}</textarea>
+                            <select id="purpose_of_contact" name="purpose_of_contact" class="form-control" value="${session.purpose_of_contact || ''}">
+<option value="General information">General information</option>
+<option value="Counseling/guidance">Counseling/guidance</option>
+<option value="Healing/therapies">Healing/therapies</option>
+<option value="mentoring">mentoring</option>
+<option value="career">career</option>
+<option value="education">education</option>
+<option value="training">training</option>
+</select>
                         </div>
                         
                         <div class="form-group">

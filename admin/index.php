@@ -204,7 +204,6 @@ $statusCounts = $stmt->fetchAll();
 
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
-        feather.replace();
         
         // Auto-refresh dashboard every 5 minutes
         setTimeout(() => {

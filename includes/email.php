@@ -6,48 +6,64 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-class EmailHelper {
+class EmailHelper
+{
     private $mailer;
-    
-    public function __construct() {
+
+    public function __construct()
+    {
         $this->mailer = new PHPMailer(true);
         $this->configure();
     }
-    
-    private function configure() {
-        $emailConfig = Config::get('email');
-        
+
+    private function configure()
+    {
         try {
+            $emailConfig = Config::get('email');
+
+            if (!$emailConfig) {
+                // Fallback or empty config
+                $emailConfig = [
+                    'smtp_host' => '',
+                    'smtp_port' => 587,
+                    'smtp_username' => '',
+                    'smtp_password' => '',
+                    'from_email' => 'noreply@localhost',
+                    'from_name' => 'Galaxy Healing World'
+                ];
+            }
+
             // Server settings
             $this->mailer->isSMTP();
-            $this->mailer->Host = $emailConfig['smtp_host'] ?? '';
+            $this->mailer->Host = $emailConfig['smtp_host'];
             $this->mailer->SMTPAuth = !empty($emailConfig['smtp_username']);
-            $this->mailer->Username = $emailConfig['smtp_username'] ?? '';
-            $this->mailer->Password = $emailConfig['smtp_password'] ?? '';
+            $this->mailer->Username = $emailConfig['smtp_username'];
+            $this->mailer->Password = $emailConfig['smtp_password'];
             $this->mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $this->mailer->Port = $emailConfig['smtp_port'] ?? 587;
+            $this->mailer->Port = $emailConfig['smtp_port'];
             $this->mailer->CharSet = 'UTF-8';
-            
+
             // Default from address
             $this->mailer->setFrom(
-                $emailConfig['from_email'] ?? 'noreply@localhost',
-                $emailConfig['from_name'] ?? 'Galaxy Healing World'
+                $emailConfig['from_email'],
+                $emailConfig['from_name']
             );
         } catch (Exception $e) {
             throw new Exception("Email configuration error: " . $e->getMessage());
         }
     }
-    
-    public function sendEmail($to, $toName, $subject, $body, $isHTML = true, $attachments = []) {
+
+    public function sendEmail($to, $toName, $subject, $body, $isHTML = true, $attachments = [])
+    {
         try {
             // Recipients
             $this->mailer->addAddress($to, $toName);
-            
+
             // Content
             $this->mailer->isHTML($isHTML);
             $this->mailer->Subject = $subject;
             $this->mailer->Body = $body;
-            
+
             if (!$isHTML) {
                 $this->mailer->AltBody = $body;
             }
@@ -56,26 +72,32 @@ class EmailHelper {
             foreach ($attachments as $attachment) {
                 $this->mailer->addAttachment($attachment['path'], $attachment['name']);
             }
-            
+
             $result = $this->mailer->send();
-            
+
             // Log email
             $this->logEmail($to, $toName, $subject, $body, $result ? 'sent' : 'failed');
-            
+
             // Clear addresses and attachments for next email
             $this->mailer->clearAllRecipients();
             $this->mailer->clearAttachments();
-            
+
             return $result;
         } catch (Exception $e) {
             $this->logEmail($to, $toName, $subject, $body, 'error', $e->getMessage());
+
+            // Clear addresses and attachments for next email to prevent contamination
+            $this->mailer->clearAllRecipients();
+            $this->mailer->clearAttachments();
+
             throw new Exception("Email sending failed: " . $e->getMessage());
         }
     }
-    
-    public function sendBulkEmail($recipients, $subject, $body, $isHTML = true, $attachments = []) {
+
+    public function sendBulkEmail($recipients, $subject, $body, $isHTML = true, $attachments = [])
+    {
         $results = [];
-        
+
         foreach ($recipients as $recipient) {
             try {
                 $result = $this->sendEmail(
@@ -99,26 +121,28 @@ class EmailHelper {
                 ];
             }
         }
-        
+
         return $results;
     }
-    
-    private function logEmail($to, $toName, $subject, $body, $status, $error = null) {
+
+    private function logEmail($to, $toName, $subject, $body, $status, $error = null)
+    {
         try {
             $db = Database::getInstance();
             $pdo = $db->getConnection();
-            
+
             $stmt = $pdo->prepare("
-                INSERT INTO email_logs (recipient_email, recipient_name, subject, message, status) 
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO email_logs (recipient_email, recipient_name, subject, message, status, error_message) 
+                VALUES (?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$to, $toName, $subject, $body, $status]);
+            $stmt->execute([$to, $toName, $subject, $body, $status, $error]);
         } catch (Exception $e) {
             error_log("Email logging failed: " . $e->getMessage());
         }
     }
-    
-    public function testConnection() {
+
+    public function testConnection()
+    {
         try {
             return $this->mailer->smtpConnect();
         } catch (Exception $e) {

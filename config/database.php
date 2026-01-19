@@ -1,11 +1,13 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-class Database {
+class Database
+{
     private static $instance = null;
     private $pdo = null;
 
-    private function __construct() {
+    private function __construct()
+    {
         try {
             $this->pdo = Config::getDB();
             $this->initializeTables();
@@ -14,18 +16,21 @@ class Database {
         }
     }
 
-    public static function getInstance() {
+    public static function getInstance()
+    {
         if (self::$instance === null) {
             self::$instance = new Database();
         }
         return self::$instance;
     }
 
-    public function getConnection() {
+    public function getConnection()
+    {
         return $this->pdo;
     }
 
-    private function initializeTables() {
+    private function initializeTables()
+    {
         $dbType = Config::get('database.type');
         $queries = [];
 
@@ -44,7 +49,8 @@ class Database {
         }
     }
 
-    private function getSQLiteQueries() {
+    private function getSQLiteQueries()
+    {
         return [
             // Users table
             "CREATE TABLE IF NOT EXISTS users (
@@ -55,6 +61,7 @@ class Database {
                 mobile VARCHAR(20) NOT NULL,
                 dob DATE,
                 age INTEGER,
+                gender VARCHAR(10),
                 house_number VARCHAR(255),
                 street_locality VARCHAR(255),
                 pincode VARCHAR(10),
@@ -138,7 +145,8 @@ class Database {
                 subject VARCHAR(255),
                 message TEXT,
                 sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                status VARCHAR(20) DEFAULT 'sent'
+                status VARCHAR(20) DEFAULT 'sent',
+                error_message TEXT
             )",
 
             // Admin users table
@@ -166,6 +174,9 @@ class Database {
                 type VARCHAR(50) NOT NULL,
                 value DECIMAL(10, 2) NOT NULL,
                 is_active TINYINT DEFAULT 1,
+                onetime TINYINT DEFAULT 0,
+                user_onetime TINYINT DEFAULT 0,
+                users TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
 
@@ -189,13 +200,15 @@ class Database {
             "CREATE TABLE IF NOT EXISTS templates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name VARCHAR(255) UNIQUE NOT NULL,
+                subject VARCHAR(255),
                 content TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )"
         ];
     }
 
-    private function getMySQLQueries() {
+    private function getMySQLQueries()
+    {
         return [
             // Users table
             "CREATE TABLE IF NOT EXISTS users (
@@ -206,6 +219,7 @@ class Database {
                 mobile VARCHAR(20) NOT NULL,
                 dob DATE,
                 age INT,
+                gender VARCHAR(10),
                 house_number VARCHAR(255),
                 street_locality VARCHAR(255),
                 pincode VARCHAR(10),
@@ -289,7 +303,8 @@ class Database {
                 subject VARCHAR(255),
                 message TEXT,
                 sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                status VARCHAR(20) DEFAULT 'sent'
+                status VARCHAR(20) DEFAULT 'sent',
+                error_message TEXT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
             // Admin users table
@@ -317,6 +332,9 @@ class Database {
                 type VARCHAR(50) NOT NULL,
                 value DECIMAL(10, 2) NOT NULL,
                 is_active TINYINT DEFAULT 1,
+                onetime TINYINT DEFAULT 0,
+                user_onetime TINYINT DEFAULT 0,
+                users TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
@@ -335,18 +353,20 @@ class Database {
                 FOREIGN KEY (session_id) REFERENCES sessions(id),
                 FOREIGN KEY (coupon_id) REFERENCES coupons(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-            
+
             // Templates table
             "CREATE TABLE IF NOT EXISTS templates (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) UNIQUE NOT NULL,
+                subject VARCHAR(255),
                 content TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         ];
     }
 
-    public function seedDefaultData() {
+    public function seedDefaultData()
+    {
         // Insert default categories
         $defaultCategories = [
             ['name' => 'first-time', 'description' => 'First time visitors', 'color' => '#3b82f6'],
@@ -363,47 +383,51 @@ class Database {
         }
     }
 
-    public function migrateToMySQL($mysqlConfig) {
+    public function migrateToMySQL($mysqlConfig)
+    {
         // Get current SQLite data
         $sqliteData = $this->getAllSQLiteData();
-        
+
         // Switch to MySQL
         Config::set('database.type', 'mysql');
         Config::set('database.mysql', $mysqlConfig);
-        
+
         // Create new MySQL instance
         $mysqlDb = new Database();
-        
+
         // Migrate data
         $this->insertDataToMySQL($mysqlDb, $sqliteData);
-        
+
         return true;
     }
 
-    private function getAllSQLiteData() {
+    private function getAllSQLiteData()
+    {
         $tables = ['users', 'sessions', 'categories', 'agent_forms', 'email_logs', 'admin_users', 'system_settings', 'coupons', 'payments', 'templates'];
         $data = [];
-        
+
         foreach ($tables as $table) {
             $stmt = $this->pdo->query("SELECT * FROM $table");
             $data[$table] = $stmt->fetchAll();
         }
-        
+
         return $data;
     }
 
-    private function insertDataToMySQL($mysqlDb, $data) {
+    private function insertDataToMySQL($mysqlDb, $data)
+    {
         $pdo = $mysqlDb->getConnection();
-        
+
         foreach ($data as $table => $rows) {
-            if (empty($rows)) continue;
-            
+            if (empty($rows))
+                continue;
+
             $columns = array_keys($rows[0]);
-            $placeholders = str_repeat('?,'- 1) . '?';
-            
+            $placeholders = str_repeat('?,', count($columns) - 1) . '?';
+
             $sql = "INSERT IGNORE INTO $table (" . implode(',', $columns) . ") VALUES ($placeholders)";
             $stmt = $pdo->prepare($sql);
-            
+
             foreach ($rows as $row) {
                 $stmt->execute(array_values($row));
             }

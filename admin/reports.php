@@ -376,7 +376,6 @@ $stats['new_sessions_week'] = $stmt->fetch()['count'];
 
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
-        feather.replace();
 
         // Set default date range to last 30 days
         document.addEventListener('DOMContentLoaded', function() {

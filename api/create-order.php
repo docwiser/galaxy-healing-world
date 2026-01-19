@@ -49,7 +49,7 @@ try {
         } else {
             // Create a preliminary user record
             $client_id = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $name), 0, 4)) . substr($mobile, -4);
-            
+
             $stmt = $db->prepare("INSERT INTO users (name, email, mobile, client_id, status) VALUES (?, ?, ?, ?, 'pending-payment')");
             $stmt->execute([$name, $email, $mobile, $client_id]);
             $userId = $db->lastInsertId();
@@ -60,7 +60,7 @@ try {
         echo json_encode(['success' => false, 'message' => 'Could not establish a user for the booking.']);
         exit;
     }
-    
+
     $amount = $data['amount'] ?? 0;
     $couponCode = $data['coupon_code'] ?? null;
 
@@ -79,10 +79,50 @@ try {
 
         if ($coupon) {
             $couponId = $coupon['id'];
-            if ($coupon['type'] === 'percentage') {
-                $discount = ($amount * $coupon['value']) / 100;
+
+            // Check for user-specific one-time usage
+            if ($coupon['user_onetime']) {
+                $used_users = json_decode($coupon['users'] ?? '[]', true);
+                if (!is_array($used_users)) {
+                    $used_users = [];
+                }
+
+                $userEmailToCheck = null;
+
+                // Try to resolve email
+                if (!empty($email)) {
+                    $userEmailToCheck = strtolower(trim($email));
+                } elseif (!empty($userId)) {
+                    $stmtUser = $db->prepare("SELECT email FROM users WHERE id = ?");
+                    $stmtUser->execute([$userId]);
+                    $u = $stmtUser->fetch();
+                    if ($u && !empty($u['email'])) {
+                        $userEmailToCheck = strtolower(trim($u['email']));
+                    }
+                }
+
+                if ($userEmailToCheck && in_array($userEmailToCheck, $used_users)) {
+                    // Coupon already used by this user, do not apply discount
+                    $discount = 0;
+                    $couponId = null;
+                    // Should we warn? The frontend might assume it applied if we don't error, 
+                    // but silently failing to apply discount is safer than breaking the order flow 
+                    // unless we want to block the order entirely.
+                    // Given the context, let's effectively invalidate it for this order.
+                } else {
+                    // Start Discount Calculation
+                    if ($coupon['type'] === 'percentage') {
+                        $discount = ($amount * $coupon['value']) / 100;
+                    } else {
+                        $discount = $coupon['value'];
+                    }
+                }
             } else {
-                $discount = $coupon['value'];
+                if ($coupon['type'] === 'percentage') {
+                    $discount = ($amount * $coupon['value']) / 100;
+                } else {
+                    $discount = $coupon['value'];
+                }
             }
         }
     }
@@ -95,9 +135,9 @@ try {
     }
 
     $orderData = [
-        'receipt'         => uniqid(),
-        'amount'          => $totalAmount * 100, // Amount in paise
-        'currency'        => 'INR',
+        'receipt' => uniqid(),
+        'amount' => $totalAmount * 100, // Amount in paise
+        'currency' => 'INR',
         'payment_capture' => 1 // Auto capture
     ];
 

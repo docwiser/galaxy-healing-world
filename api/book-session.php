@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/email.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 use Razorpay\Api\Api;
 use Razorpay\Api\Errors\SignatureVerificationError;
@@ -8,8 +9,10 @@ use Razorpay\Api\Errors\SignatureVerificationError;
 header('Content-Type: application/json');
 
 // Basic error handling
-ini_set('display_errors', 0);
-error_reporting(0);
+ini_set('log_errors', 'On');
+ini_set('error_log', __DIR__ . '/error_log');
+ini_set('display_errors', 'Off'); // IMPORTANT: don't show errors to users
+error_reporting(E_ALL);
 
 set_error_handler(function ($severity, $message, $file, $line) {
     throw new ErrorException($message, 0, $severity, $file, $line);
@@ -20,12 +23,18 @@ try {
     $db = Database::getInstance()->getConnection();
 
     $user_id = $_POST['user_id'] ?? null;
+    $dob = $_POST['dob'] ?? null;
+    if (empty($dob) && !empty($_POST['age'])) {
+        $age = (int)$_POST['age'];
+        $dob = date('Y-m-d', strtotime("-$age years"));
+    }
+
 
     if ($user_id) {
         // Update existing user
         $stmt = $db->prepare(
             "UPDATE users SET 
-                name = ?, email = ?, mobile = ?, dob = ?, age = ?, query_text = ?, attendant = ?, 
+                name = ?, email = ?, mobile = ?, dob = ?, age = ?, gender = ?, query_text = ?, attendant = ?, 
                 attendant_name = ?, attendant_email = ?, attendant_mobile = ?, relationship = ?, 
                 house_number = ?, street_locality = ?, pincode = ?, area_village = ?, city = ?, 
                 district = ?, state = ?, address = ?, occupation = ?, qualification = ?, how_learned = ?, has_disability = ?, 
@@ -33,13 +42,14 @@ try {
                 status = 'new' 
             WHERE id = ?"
         );
-        
+
         $stmt->execute([
             $_POST['name'] ?? null,
             $_POST['email'] ?? null,
             $_POST['mobile'] ?? null,
-            $_POST['dob'] ?: null,
-            $_POST['approximate_age'] ?? null,
+            $dob,
+            $_POST['age'] ?? null,
+            $_POST['gender'] ?? null,
             $_POST['query_text'] ?? null,
             $_POST['attendant'] ?? 'self',
             $_POST['attendant_name'] ?? null,
@@ -66,23 +76,24 @@ try {
     } else {
         // Create new user
         $client_id = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $_POST['name'] ?? 'USER'), 0, 4)) . substr($_POST['mobile'] ?? '0000', -4);
-        
+
         $stmt = $db->prepare(
             "INSERT INTO users (
-                client_id, name, email, mobile, dob, age, query_text, attendant, attendant_name, 
+                client_id, name, email, mobile, dob, age, gender, query_text, attendant, attendant_name, 
                 attendant_email, attendant_mobile, relationship, house_number, street_locality, 
                 pincode, area_village, city, district, state, address, occupation, qualification, how_learned, 
                 has_disability, disability_type, disability_percentage, voice_recording_path, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first-time')"
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first-time')"
         );
-        
+
         $stmt->execute([
             $client_id,
             $_POST['name'] ?? null,
             $_POST['email'] ?? null,
             $_POST['mobile'] ?? null,
-            $_POST['dob'] ?: null,
-            $_POST['approximate_age'] ?? null,
+            $dob,
+            $_POST['age'] ?? null,
+            $_POST['gender'] ?? null,
             $_POST['query_text'] ?? null,
             $_POST['attendant'] ?? 'self',
             $_POST['attendant_name'] ?? null,
@@ -105,7 +116,7 @@ try {
             $_POST['disability_percentage'] ?? null,
             $_POST['voice_recording_path'] ?? null
         ]);
-        
+
         $user_id = $db->lastInsertId();
     }
 
@@ -117,7 +128,7 @@ try {
     // Verify payment and update record
     if (isset($_POST['razorpay_payment_id']) && isset($_POST['razorpay_order_id']) && isset($_POST['razorpay_signature'])) {
         $payment_config = Config::get('payment');
-        
+
         // IMPORTANT: Ensure your Razorpay keys are set in the config file.
         $razorpay_key_id = $razorpayEnv['key_id'] ?? '';
         $razorpay_key_secret = $razorpayEnv['key_secret'] ?? '';
@@ -127,7 +138,7 @@ try {
         }
 
         $api = new Api($razorpay_key_id, $razorpay_key_secret);
-        
+
         try {
             $attributes = [
                 'razorpay_order_id' => $_POST['razorpay_order_id'],
@@ -145,7 +156,60 @@ try {
             $stmt = $db->prepare("UPDATE users SET status = 'payment-made', payment_made = payment_made + (SELECT amount FROM payments WHERE order_id = ? LIMIT 1) WHERE id = ?");
             $stmt->execute([$_POST['razorpay_order_id'], $user_id]);
 
-        } catch(SignatureVerificationError $e) {
+            // Deactivate one-time coupon if used
+            $couponId = $_POST['coupon_id'] ?? null;
+
+            // If not directly passed, try to fetch from payment (though create-order should pass it back now)
+            if (!$couponId) {
+                $stmt = $db->prepare("SELECT coupon_id FROM payments WHERE order_id = ?");
+                $stmt->execute([$_POST['razorpay_order_id']]);
+                $payment = $stmt->fetch();
+                $couponId = $payment['coupon_id'] ?? null;
+            }
+
+            if ($couponId) {
+                $stmt = $db->prepare("SELECT onetime, user_onetime, users FROM coupons WHERE id = ?");
+                $stmt->execute([$couponId]);
+                $coupon = $stmt->fetch();
+
+                if ($coupon) {
+                    if ($coupon['onetime']) {
+                        $stmt = $db->prepare("UPDATE coupons SET is_active = 0 WHERE id = ?");
+                        $stmt->execute([$couponId]);
+                    }
+                    if ($coupon['user_onetime']) {
+                        $used_users = json_decode($coupon['users'] ?: '[]', true);
+
+                        // Reliable email fetching
+                        $user_email = $_POST['email'] ?? null;
+                        if (!$user_email && $user_id) {
+                            $stmtUser = $db->prepare("SELECT email FROM users WHERE id = ?");
+                            $stmtUser->execute([$user_id]);
+                            $u = $stmtUser->fetch();
+                            $user_email = $u['email'] ?? null;
+                        }
+
+                        $user_email = $user_email ? strtolower(trim($user_email)) : null;
+
+                        if ($user_email) {
+                            if (!in_array($user_email, $used_users)) {
+                                $used_users[] = $user_email;
+                                $stmt = $db->prepare("UPDATE coupons SET users = ? WHERE id = ?");
+                                $stmt->execute([json_encode($used_users), $couponId]);
+                            } else {
+                                // This block handles the edge case where validate checks passed but parallel request or loophole allowed it here.
+                                // However, since payment is already processed, we can't easily revert.
+                                // We should log strict violation or maybe we can't do much if payment is captured.
+                                // But importantly, we MUST NOT add it again or process if we could stop it earlier.
+                                // But here it's post-payment. The create-order and validate-coupons MUST catch it.
+                                // This update is just to RECORD the usage.
+                            }
+                        }
+                    }
+                }
+            }
+
+        } catch (SignatureVerificationError $e) {
             // Signature is invalid
             error_log('Razorpay Signature Verification Failed: ' . $e->getMessage());
             http_response_code(400);
@@ -153,16 +217,52 @@ try {
             exit;
         }
     } else {
-         // This block handles cases where payment is not made (e.g. for a free session coupon)
-         // or if payment is handled differently.
-         if (isset($_POST['razorpay_order_id'])) {
-             $stmt = $db->prepare("UPDATE payments SET session_id = ?, status = 'completed' WHERE order_id = ?");
-             $stmt->execute([$session_id, $_POST['razorpay_order_id']]);
+        // This block handles cases where payment is not made (e.g. for a free session coupon)
+        // or if payment is handled differently.
+        if (isset($_POST['razorpay_order_id'])) {
+            $stmt = $db->prepare("UPDATE payments SET session_id = ?, status = 'completed' WHERE order_id = ?");
+            $stmt->execute([$session_id, $_POST['razorpay_order_id']]);
 
-             // For zero payment (100% coupon), still update status
-             $stmt = $db->prepare("UPDATE users SET status = 'payment-made' WHERE id = ?");
-             $stmt->execute([$user_id]);
-         }
+            // For zero payment (100% coupon), still update status
+            $stmt = $db->prepare("UPDATE users SET status = 'payment-made' WHERE id = ?");
+            $stmt->execute([$user_id]);
+        }
+    }
+
+    // Send confirmation email
+    try {
+        $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $stmt = $db->prepare("SELECT * FROM sessions WHERE id = ?");
+        $stmt->execute([$session_id]);
+        $session = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $subject = "Your session with Galaxy Healing World is confirmed!";
+        $body = "
+            <h1>Session Confirmed</h1>
+            <p>Dear " . htmlspecialchars($user['name']) . ",</p>
+            <p>Your session with Galaxy Healing World has been successfully booked. Here are the details:</p>
+            <ul>
+                <li><strong>Session ID:</strong> " . htmlspecialchars($session['id']) . "</li>
+                <li><strong>Query:</strong> " . htmlspecialchars($session['exact_query']) . "</li>
+                <li><strong>Status:</strong> " . htmlspecialchars($session['query_status']) . "</li>
+            </ul>
+            <p>We will contact you shortly to schedule your appointment.</p>
+            <p>Thank you for choosing Galaxy Healing World.</p>
+        ";
+
+        $emailHelper = new EmailHelper();
+        $emailHelper->sendEmail(
+            $user['email'],
+            $user['name'],
+            $subject,
+            $body
+        );
+    } catch (Exception $e) {
+        // Log email sending error, but don't fail the whole request
+        error_log('Email sending failed: ' . $e->getMessage());
     }
 
     echo json_encode(['success' => true, 'user_id' => $user_id, 'session_id' => $session_id]);

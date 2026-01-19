@@ -17,18 +17,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $type = $_POST['type'];
         $value = $_POST['value'];
         $is_active = isset($_POST['is_active']) ? 1 : 0;
+        $onetime = isset($_POST['onetime']) ? 1 : 0;
+        $user_onetime = isset($_POST['user_onetime']) ? 1 : 0;
+        $users = $_POST['users'];
 
-        $stmt = $db->prepare("INSERT INTO coupons (code, type, value, is_active) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$code, $type, $value, $is_active]);
+        $stmt = $db->prepare("INSERT INTO coupons (code, type, value, is_active, onetime, user_onetime, users) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$code, $type, $value, $is_active, $onetime, $user_onetime, $users]);
     } elseif (isset($_POST['edit_coupon'])) {
         $id = $_POST['id'];
         $code = $_POST['code'];
         $type = $_POST['type'];
         $value = $_POST['value'];
         $is_active = isset($_POST['is_active']) ? 1 : 0;
+        $onetime = isset($_POST['onetime']) ? 1 : 0;
+        $user_onetime = isset($_POST['user_onetime']) ? 1 : 0;
+        $users = $_POST['users'];
 
-        $stmt = $db->prepare("UPDATE coupons SET code = ?, type = ?, value = ?, is_active = ? WHERE id = ?");
-        $stmt->execute([$code, $type, $value, $is_active, $id]);
+        $stmt = $db->prepare("UPDATE coupons SET code = ?, type = ?, value = ?, is_active = ?, onetime = ?, user_onetime = ?, users = ? WHERE id = ?");
+        $stmt->execute([$code, $type, $value, $is_active, $onetime, $user_onetime, $users, $id]);
     } elseif (isset($_POST['delete_coupon'])) {
         $id = $_POST['id'];
         $stmt = $db->prepare("DELETE FROM coupons WHERE id = ?");
@@ -76,6 +82,9 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
                                         <th>Type</th>
                                         <th>Value</th>
                                         <th>Status</th>
+                                        <th>One-time Use</th>
+                                        <th>Per-User One-Time</th>
+                                        <th>Users</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -86,6 +95,9 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
                                             <td><?= htmlspecialchars($coupon['type']) ?></td>
                                             <td><?= htmlspecialchars($coupon['value']) ?><?= ($coupon['type'] === 'percentage') ? '%' : '' ?></td>
                                             <td><span class="badge badge-<?= $coupon['is_active'] ? 'success' : 'danger' ?>"><?= $coupon['is_active'] ? 'Active' : 'Inactive' ?></span></td>
+                                            <td><span class="badge badge-<?= $coupon['onetime'] ? 'info' : 'secondary' ?>"><?= $coupon['onetime'] ? 'Yes' : 'No' ?></span></td>
+                                            <td><span class="badge badge-<?= $coupon['user_onetime'] ? 'info' : 'secondary' ?>"><?= $coupon['user_onetime'] ? 'Yes' : 'No' ?></span></td>
+                                            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><?= htmlspecialchars($coupon['users'] ?? '') ?></td>
                                             <td>
                                                 <button class="btn btn-sm btn-info" onclick="openEditModal(<?= htmlspecialchars(json_encode($coupon)) ?>)">Edit</button>
                                                 <form method="POST" style="display: inline-block;">
@@ -133,6 +145,18 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
                         <input type="checkbox" name="is_active" class="form-check-input" id="edit_is_active" value="1">
                         <label class="form-check-label" for="edit_is_active">Active</label>
                     </div>
+                    <div class="form-check">
+                        <input type="checkbox" name="onetime" class="form-check-input" id="edit_onetime" value="1">
+                        <label class="form-check-label" for="edit_onetime">One-time use only</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" name="user_onetime" class="form-check-input" id="edit_user_onetime" value="1">
+                        <label class="form-check-label" for="edit_user_onetime">Per-User One-time use only</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="users">Users (comma-separated IDs)</label>
+                        <textarea name="users" id="edit_users" class="form-control" rows="3"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
@@ -145,7 +169,6 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
 
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
-        feather.replace();
 
         function openAddModal() {
             document.getElementById('couponModalTitle').innerText = 'Add New Coupon';
@@ -154,6 +177,9 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
             document.getElementById('edit_type').value = 'fixed';
             document.getElementById('edit_value').value = '';
             document.getElementById('edit_is_active').checked = true;
+            document.getElementById('edit_onetime').checked = false;
+            document.getElementById('edit_user_onetime').checked = false;
+            document.getElementById('edit_users').value = '';
             document.getElementById('addCouponBtn').style.display = 'inline-block';
             document.getElementById('editCouponBtn').style.display = 'none';
             document.getElementById('couponModal').style.display = 'block';
@@ -167,6 +193,9 @@ $coupons = $db->query("SELECT * FROM coupons ORDER BY created_at DESC")->fetchAl
             document.getElementById('edit_type').value = coupon.type;
             document.getElementById('edit_value').value = coupon.value;
             document.getElementById('edit_is_active').checked = coupon.is_active;
+            document.getElementById('edit_onetime').checked = coupon.onetime;
+            document.getElementById('edit_user_onetime').checked = coupon.user_onetime;
+            document.getElementById('edit_users').value = coupon.users || '';
             document.getElementById('addCouponBtn').style.display = 'none';
             document.getElementById('editCouponBtn').style.display = 'inline-block';
             document.getElementById('couponModal').style.display = 'block';

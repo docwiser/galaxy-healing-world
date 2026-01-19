@@ -10,6 +10,7 @@ try {
 
     $id = $_POST['id'] ?? null;
     $name = $_POST['name'] ?? '';
+    $subject = $_POST['subject'] ?? '';
     $content = $_POST['content'] ?? '';
 
     if (empty($name) || empty($content)) {
@@ -18,12 +19,12 @@ try {
 
     if ($id) {
         // Update existing template
-        $stmt = $db->prepare("UPDATE templates SET name = ?, content = ? WHERE id = ?");
-        $stmt->execute([$name, $content, $id]);
+        $stmt = $db->prepare("UPDATE templates SET name = ?, subject = ?, content = ? WHERE id = ?");
+        $stmt->execute([$name, $subject, $content, $id]);
     } else {
         // Create new template
-        $stmt = $db->prepare("INSERT INTO templates (name, content) VALUES (?, ?)");
-        $stmt->execute([$name, $content]);
+        $stmt = $db->prepare("INSERT INTO templates (name, subject, content) VALUES (?, ?, ?)");
+        $stmt->execute([$name, $subject, $content]);
     }
 
     echo json_encode(['success' => true]);

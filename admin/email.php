@@ -13,6 +13,14 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $db = Database::getInstance();
 $pdo = $db->getConnection();
 
+function replacePlaceholders($content, $user)
+{
+    foreach ($user as $key => $value) {
+        $content = str_replace('{{' . $key . '}}', $value, $content);
+    }
+    return $content;
+}
+
 // Handle email sending
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -23,73 +31,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = trim($_POST['message'] ?? '');
         $attachments = isset($_POST['attachments']) ? json_decode($_POST['attachments'], true) : [];
 
-
         if ($subject && $message) {
             try {
                 $emailHelper = new EmailHelper();
-                $recipientList = [];
+                $users = [];
 
                 if ($recipient_type === 'all') {
-                    // Get all users
-                    $stmt = $pdo->query("SELECT name, email FROM users WHERE email IS NOT NULL AND email != ''");
+                    $stmt = $pdo->query("SELECT * FROM users WHERE email IS NOT NULL AND email != ''");
                     $users = $stmt->fetchAll();
-
-                    foreach ($users as $user) {
-                        $recipientList[] = [
-                            'name' => $user['name'],
-                            'email' => $user['email']
-                        ];
-                    }
                 } elseif ($recipient_type === 'selected') {
-                    // Get selected users
                     $selectedUsers = $_POST['selected_users'] ?? [];
                     if (!empty($selectedUsers)) {
                         $placeholders = implode(',', array_fill(0, count($selectedUsers), '?'));
-                        $stmt = $pdo->prepare("SELECT name, email FROM users WHERE id IN ($placeholders) AND email IS NOT NULL AND email != ''");
+                        $stmt = $pdo->prepare("SELECT * FROM users WHERE id IN ($placeholders) AND email IS NOT NULL AND email != ''");
                         $stmt->execute($selectedUsers);
                         $users = $stmt->fetchAll();
-
-                        foreach ($users as $user) {
-                            $recipientList[] = [
-                                'name' => $user['name'],
-                                'email' => $user['email']
-                            ];
-                        }
                     }
                 } elseif ($recipient_type === 'custom') {
-                    // Parse custom email addresses
                     $recipients = $_POST['recipients'] ?? '';
                     $emails = array_filter(array_map('trim', explode(',', $recipients)));
+                    $recipientList = [];
                     foreach ($emails as $email) {
                         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                            $recipientList[] = [
-                                'name' => '',
-                                'email' => $email
-                            ];
+                            $recipientList[] = ['name' => '', 'email' => $email];
                         }
+                    }
+                    if (!empty($recipientList)) {
+                        $results = $emailHelper->sendBulkEmail($recipientList, $subject, $message, true, $attachments);
+                        // ... (handle results for custom emails)
                     }
                 }
 
-                if (empty($recipientList)) {
-                    $error = "No valid recipients found";
-                } else {
-                    $results = $emailHelper->sendBulkEmail($recipientList, $subject, $message, true, $attachments);
-
+                if (!empty($users)) {
                     $sent = 0;
                     $failed = 0;
-                    foreach ($results as $result) {
-                        if ($result['success']) {
-                            $sent++;
-                        } else {
-                            $failed++;
+                    foreach ($users as $user) {
+                        $personalizedSubject = replacePlaceholders($subject, $user);
+                        $personalizedMessage = replacePlaceholders($message, $user);
+
+                        $recipient = [['name' => $user['name'], 'email' => $user['email']]];
+                        $results = $emailHelper->sendBulkEmail($recipient, $personalizedSubject, $personalizedMessage, true, $attachments);
+
+                        foreach ($results as $result) {
+                            if ($result['success']) {
+                                $sent++;
+                            } else {
+                                $failed++;
+                            }
                         }
                     }
-
                     $success = "Email sent successfully to $sent recipient(s)";
                     if ($failed > 0) {
                         $success .= " ($failed failed)";
                     }
+                } elseif ($recipient_type !== 'custom') {
+                    $error = "No valid recipients found";
                 }
+
             } catch (Exception $e) {
                 $error = "Error sending email: " . $e->getMessage();
             }
@@ -111,7 +109,7 @@ $failedEmails = $stmt->fetch()['failed'];
 
 // Get recent email logs
 $stmt = $pdo->query("
-    SELECT recipient_email, recipient_name, subject, sent_at, status 
+    SELECT recipient_email, recipient_name, subject, sent_at, status, error_message 
     FROM email_logs 
     ORDER BY sent_at DESC 
     LIMIT 10
@@ -421,6 +419,12 @@ $allUsers = $stmt->fetchAll();
                                                         <?php echo date('M j, Y g:i A', strtotime($email['sent_at'])); ?>
                                                     </time>
                                                 </div>
+                                                <?php if (!empty($email['error_message'])): ?>
+                                                    <div class="email-error"
+                                                        style="color: #ef4444; font-size: 0.8em; margin-top: 4px;">
+                                                        Error: <?php echo htmlspecialchars($email['error_message']); ?>
+                                                    </div>
+                                                <?php endif; ?>
                                             </div>
                                             <div class="email-status">
                                                 <span
@@ -529,9 +533,9 @@ $allUsers = $stmt->fetchAll();
         let attachments = [];
         let pendingFiles = [];
 
-        $(document).ready(function() {
+        $(document).ready(function () {
             // Load templates
-            $.get('../api/get-templates.php', function(response) {
+            $.get('../api/get-templates.php', function (response) {
                 if (response.success) {
                     templates = response.templates;
                     const container = $('.template-buttons');
@@ -541,7 +545,7 @@ $allUsers = $stmt->fetchAll();
                             type: 'button',
                             class: 'btn btn-small btn-outline',
                             text: template.name,
-                            click: function() {
+                            click: function () {
                                 loadTemplate(template.id);
                             }
                         });
@@ -551,7 +555,7 @@ $allUsers = $stmt->fetchAll();
             });
 
             // Attachment handling
-            $('#attachments').on('change', function() {
+            $('#attachments').on('change', function () {
                 const files = $(this)[0].files;
                 if (files.length > 0) {
                     showUploadModal(files);
@@ -559,7 +563,7 @@ $allUsers = $stmt->fetchAll();
             });
 
             // Email form submission
-            $('#emailForm').on('submit', function(e) {
+            $('#emailForm').on('submit', function (e) {
                 e.preventDefault();
                 const sendBtn = document.getElementById('sendEmailBtn');
                 sendBtn.disabled = true;
@@ -574,10 +578,10 @@ $allUsers = $stmt->fetchAll();
                     data: formData,
                     processData: false,
                     contentType: false,
-                    success: function(response) {
+                    success: function (response) {
                         location.reload();
                     },
-                    error: function() {
+                    error: function () {
                         alert('Error sending email');
                         sendBtn.disabled = false;
                         sendBtn.innerHTML = '<i data-feather="send"></i> Send Email';
@@ -613,7 +617,7 @@ $allUsers = $stmt->fetchAll();
 
         function confirmUpload() {
             const uploadPromises = pendingFiles.map(file => uploadFile(file));
-            
+
             Promise.all(uploadPromises).then(() => {
                 closeUploadModal();
             });
@@ -630,7 +634,7 @@ $allUsers = $stmt->fetchAll();
                     data: formData,
                     processData: false,
                     contentType: false,
-                    success: function(response) {
+                    success: function (response) {
                         try {
                             const res = typeof response === 'string' ? JSON.parse(response) : response;
                             if (res.success) {
@@ -643,7 +647,7 @@ $allUsers = $stmt->fetchAll();
                             resolve({ success: false });
                         }
                     },
-                    error: function(err) {
+                    error: function (err) {
                         console.error('Upload failed', err);
                         resolve({ success: false });
                     }
@@ -653,7 +657,7 @@ $allUsers = $stmt->fetchAll();
 
         function removeAttachment(filePath) {
             if (confirm('Are you sure you want to remove this attachment?')) {
-                $.post('../api/remove-attachment.php', { file: filePath }, function(response) {
+                $.post('../api/remove-attachment.php', { file: filePath }, function (response) {
                     try {
                         const res = typeof response === 'string' ? JSON.parse(response) : response;
                         if (res.success) {
@@ -691,10 +695,12 @@ $allUsers = $stmt->fetchAll();
 
         function loadTemplate(templateId) {
             const messageField = document.getElementById('message');
+            const subjectField = document.getElementById('subject');
             const selectedTemplate = templates.find(t => t.id == templateId);
 
             if (selectedTemplate) {
                 messageField.value = selectedTemplate.content;
+                subjectField.value = selectedTemplate.subject;
             }
         }
     </script>

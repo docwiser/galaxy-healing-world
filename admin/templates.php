@@ -45,6 +45,7 @@ $db = Database::getInstance()->getConnection();
                             <thead>
                                 <tr>
                                     <th>Name</th>
+                                    <th>Subject</th>
                                     <th>Content</th>
                                     <th>Actions</th>
                                 </tr>
@@ -75,6 +76,10 @@ $db = Database::getInstance()->getConnection();
                         <div class="form-group">
                             <label for="template-name">Template Name</label>
                             <input type="text" class="form-control" id="template-name" name="name" required placeholder="e.g., Welcome Email">
+                        </div>
+                        <div class="form-group">
+                            <label for="template-subject">Subject</label>
+                            <input type="text" class="form-control" id="template-subject" name="subject" required placeholder="e.g., Welcome to our platform!">
                         </div>
                         <div class="form-group">
                             <label for="template-content">Template Content</label>
@@ -122,6 +127,7 @@ $db = Database::getInstance()->getConnection();
                             tableBody.append(`
                                 <tr>
                                     <td>${template.name}</td>
+                                    <td>${template.subject}</td>
                                     <td>${truncatedContent}</td>
                                     <td>
                                         <button class="btn btn-sm btn-info edit-btn" data-id="${template.id}">Edit</button>
@@ -138,6 +144,7 @@ $db = Database::getInstance()->getConnection();
             $('#add-template-btn').click(function() {
                 $('#template-form')[0].reset();
                 $('#template-id').val('');
+                $('#template-subject').val('');
                 $('#modal-title').text('Add New Template');
                 $('#template-modal').modal('show');
             });
@@ -150,6 +157,7 @@ $db = Database::getInstance()->getConnection();
                         const template = response.templates[0];
                         $('#template-id').val(template.id);
                         $('#template-name').val(template.name);
+                        $('#template-subject').val(template.subject);
                         $('#template-content').val(template.content);
                         $('#modal-title').text('Edit Template');
                         $('#template-modal').modal('show');

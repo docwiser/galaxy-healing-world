@@ -314,7 +314,6 @@ $categories = $stmt->fetchAll();
 
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/feather.min.js"></script>
     <script>
-        feather.replace();
 
         function editCategory(category) {
             document.getElementById('editCategoryId').value = category.id;
