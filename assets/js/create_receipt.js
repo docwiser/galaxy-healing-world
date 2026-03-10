@@ -50,7 +50,7 @@ function generateReceipt(paymentData) {
     doc.setFontSize(12);
     doc.text(`Amount Paid (INR): ${amount}`, 20, 123);
     doc.text(`Mode of Payment: ${payment_method}`, 20, 130);
-    doc.text(`Date & Time: ${new Date(created_at).toLocaleString()}`, 20, 137);
+    doc.text(`Date & Time: ${new Date(created_at).toLocaleString("en-IN", {timeZone: "Asia/Kolkata"})}`, 20, 137);
     doc.text(`Transaction ID: ${transaction_id}`, 20, 144);
 
     // Declaration

@@ -733,7 +733,7 @@ $sessions = $stmt->fetchAll();
                         <h5>Administrative</h5>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="session_fee">Session Fee (₹)</label>
+                                <label for="session_fee">Session Fee (â‚¹)</label>
                                 <input type="number" id="session_fee" name="session_fee" 
                                        value="${data.session_fee || ''}" class="form-control" min="0">
                             </div>

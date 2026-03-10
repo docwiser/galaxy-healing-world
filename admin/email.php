@@ -415,9 +415,13 @@ $allUsers = $stmt->fetchAll();
                                                     <?php echo htmlspecialchars($email['subject']); ?>
                                                 </div>
                                                 <div class="email-meta">
-                                                    <time datetime="<?php echo $email['sent_at']; ?>">
-                                                        <?php echo date('M j, Y g:i A', strtotime($email['sent_at'])); ?>
-                                                    </time>
+<?php
+$dt = new DateTime($email['sent_at'], new DateTimeZone('UTC'));
+$dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
+?>
+<time datetime="<?php echo $dt->format('c'); ?>">
+    <?php echo $dt->format('M j, Y g:i A'); ?>
+</time>
                                                 </div>
                                                 <?php if (!empty($email['error_message'])): ?>
                                                     <div class="email-error"
@@ -490,7 +494,7 @@ $allUsers = $stmt->fetchAll();
     <div id="uploadModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">Confirm Upload</h3>
+<h3 class="modal-title" id="modalTitle" tabindex="-1">Confirm Upload</h3>
             </div>
             <div class="modal-body">
                 <p class="mb-4">Do you want to upload these files as attachments?</p>
@@ -607,6 +611,7 @@ $allUsers = $stmt->fetchAll();
             });
 
             $('#uploadModal').css('display', 'flex');
+    document.getElementById('modalTitle').focus();
         }
 
         function closeUploadModal() {

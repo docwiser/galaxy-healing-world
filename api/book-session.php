@@ -25,13 +25,68 @@ try {
     $user_id = $_POST['user_id'] ?? null;
     $dob = $_POST['dob'] ?? null;
     if (empty($dob) && !empty($_POST['age'])) {
-        $age = (int)$_POST['age'];
+        $age = (int) $_POST['age'];
         $dob = date('Y-m-d', strtotime("-$age years"));
     }
 
 
+    // Handle Disability Documents Upload
+    $disability_documents_json = null;
+    try {
+        if (isset($_FILES['disability_documents']) && !empty($_FILES['disability_documents']['name'][0])) {
+            $uploadDir = __DIR__ . '/../uploads/disability_docs/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
+            $uploadedFiles = [];
+            $files = $_FILES['disability_documents'];
+            $count = count($files['name']);
+
+            for ($i = 0; $i < $count; $i++) {
+                if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                    $tmpName = $files['tmp_name'][$i];
+                    $originalName = basename($files['name'][$i]);
+                    $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+                    $allowed = ['pdf', 'jpg', 'jpeg', 'png'];
+
+                    if (in_array($ext, $allowed)) {
+                        $newName = uniqid('doc_', true) . '.' . $ext;
+                        $uploadPath = $uploadDir . $newName;
+
+                        if (move_uploaded_file($tmpName, $uploadPath)) {
+                            $uploadedFiles[] = 'uploads/disability_docs/' . $newName;
+                        }
+                    }
+                }
+            }
+
+            if (!empty($uploadedFiles)) {
+                $disability_documents_json = json_encode($uploadedFiles);
+            }
+        }
+    } catch (Throwable $e) {
+        // Log error but allow submission to proceed
+        error_log("Disability document upload failed: " . $e->getMessage());
+    }
+
     if ($user_id) {
         // Update existing user
+        // Keep existing documents if no new ones uploaded, or replace? 
+        // Logic: specific update. If new files uploaded, replace or append? 
+        // Standard form submission usually replaces.
+        // However, if user is verified (locked), frontend input is disabled, so no files sent.
+        // So $disability_documents_json will be null.
+        // If we strictly update with null, we might wipe existing data?
+        // Check if we should update usage:
+        // We only want to update if we have new data OR if we aren't wiping locked data.
+        // But the query updates ALL fields.
+        // To avoid wiping, we should fetch existing if new is null?
+        // Or simpler: dynamic query building? No, too complex to change all now.
+        // Solution: If $disability_documents_json is null, pass the EXISTING value?
+        // We can't easily get existing value without a SELECT.
+        // Optimization: modify query to only update if not null? COALESCE(?, disability_documents).
+
         $stmt = $db->prepare(
             "UPDATE users SET 
                 name = ?, email = ?, mobile = ?, dob = ?, age = ?, gender = ?, query_text = ?, attendant = ?, 
@@ -39,6 +94,7 @@ try {
                 house_number = ?, street_locality = ?, pincode = ?, area_village = ?, city = ?, 
                 district = ?, state = ?, address = ?, occupation = ?, qualification = ?, how_learned = ?, has_disability = ?, 
                 disability_type = ?, disability_percentage = ?, voice_recording_path = ?, 
+                disability_documents = COALESCE(?, disability_documents),
                 status = 'new' 
             WHERE id = ?"
         );
@@ -71,6 +127,7 @@ try {
             $_POST['disability_type'] ?? null,
             $_POST['disability_percentage'] ?? null,
             $_POST['voice_recording_path'] ?? null,
+            $disability_documents_json,
             $user_id
         ]);
     } else {
@@ -82,8 +139,8 @@ try {
                 client_id, name, email, mobile, dob, age, gender, query_text, attendant, attendant_name, 
                 attendant_email, attendant_mobile, relationship, house_number, street_locality, 
                 pincode, area_village, city, district, state, address, occupation, qualification, how_learned, 
-                has_disability, disability_type, disability_percentage, voice_recording_path, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first-time')"
+                has_disability, disability_type, disability_percentage, voice_recording_path, disability_documents, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first-time')"
         );
 
         $stmt->execute([
@@ -114,7 +171,8 @@ try {
             $_POST['has_disability'] ?? 'no',
             $_POST['disability_type'] ?? null,
             $_POST['disability_percentage'] ?? null,
-            $_POST['voice_recording_path'] ?? null
+            $_POST['voice_recording_path'] ?? null,
+            $disability_documents_json
         ]);
 
         $user_id = $db->lastInsertId();
