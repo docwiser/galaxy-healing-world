@@ -121,7 +121,7 @@
                         <div id="age-input" class="hidden">
                             <label for="approximate_age">Approximate Age *<br>à¤…à¤¨à¥à¤®à¤¾à¤¨à¤¿à¤¤ à¤†à¤¯à¥
                                 *</label>
-                            <select id="approximate_age" name="approximate_age" required>
+                            <select id="approximate_age" name="approximate_age" aria-required="false">
                                 <option value="" selected disabled>Select approximate age | à¤…à¤¨à¥à¤®à¤¾à¤¨à¤¿à¤¤
                                     à¤†à¤¯à¥ à¤šà¥à¤¨à¥‡à¤‚</option>
                                 <?php for ($i = 1; $i <= 100; $i++): ?>
@@ -169,25 +169,25 @@
                                 <div>
                                     <label for="attendant_name">Attendant Name *<br>à¤ªà¤°à¤¿à¤šà¤¾à¤°à¤• à¤•à¤¾
                                         à¤¨à¤¾à¤® *</label>
-                                    <input type="text" id="attendant_name" name="attendant_name">
+                                    <input type="text" id="attendant_name" name="attendant_name" aria-required="false">
                                 </div>
                                 <div>
                                     <label for="attendant_email">Attendant Email *<br>à¤ªà¤°à¤¿à¤šà¤¾à¤°à¤• à¤•à¤¾
                                         à¤ˆà¤®à¥‡à¤² *</label>
-                                    <input type="email" id="attendant_email" name="attendant_email">
+                                    <input type="email" id="attendant_email" name="attendant_email" aria-required="false">
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div>
                                     <label for="attendant_mobile">Attendant Mobile *<br>à¤ªà¤°à¤¿à¤šà¤¾à¤°à¤• à¤•à¤¾
                                         à¤®à¥‹à¤¬à¤¾à¤‡à¤² à¤¨à¤‚à¤¬à¤° *</label>
-                                    <input type="tel" id="attendant_mobile" name="attendant_mobile">
+                                    <input type="tel" id="attendant_mobile" name="attendant_mobile" aria-required="false">
                                 </div>
                                 <div>
                                     <label for="relationship">Relationship to Client *<br>à¤•à¥à¤²à¤¾à¤‡à¤‚à¤Ÿ à¤¸à¥‡
                                         à¤¸à¤‚à¤¬à¤‚à¤§ *</label>
                                     <input type="text" id="relationship" name="relationship"
-                                        placeholder="e.g., Mother, Father, Friend">
+                                        placeholder="e.g., Mother, Father, Friend" aria-required="false">
                                 </div>
                             </div>
                         </fieldset>
@@ -215,14 +215,14 @@
                             </div>
                             <div id="area-selection" class="hidden">
                                 <label for="area_village">Area/Village *<br>à¤•à¥à¤·à¥‡à¤¤à¥à¤°/à¤—à¤¾à¤à¤µ *</label>
-                                <select id="area_village" name="area_village" required>
+                                <select id="area_village" name="area_village" aria-required="true">
                                     <option value="" selected disabled>Select Area/Village |
                                         à¤•à¥à¤·à¥‡à¤¤à¥à¤°/à¤—à¤¾à¤à¤µ</option>
                                 </select>
                             </div>
                             <div id="city-selection" class="hidden">
                                 <label for="city">City *<br>à¤¶à¤¹à¤° *</label>
-                                <select id="city" name="city" onchange="fillAddressDetails()" required>
+                                <select id="city" name="city" onchange="fillAddressDetails()" aria-required="true">
                                     <option value="" selected disabled>Select City | à¤¶à¤¹à¤°</option>
                                 </select>
                             </div>
@@ -358,7 +358,7 @@
                                 <div>
                                     <label for="disability_type">Type of Disability *<br>à¤¦à¤¿à¤µà¥à¤¯à¤¾à¤‚à¤—à¤¤à¤¾
                                         à¤•à¤¾ à¤ªà¥à¤°à¤•à¤¾à¤° *</label>
-                                    <select id="disability_type" name="disability_type">
+                                    <select id="disability_type" name="disability_type" aria-required="false">
                                         <option value="" selected disabled>Select a Disability type |
                                             à¤¦à¤¿à¤µà¥à¤¯à¤¾à¤‚à¤—à¤¤à¤¾ à¤•à¤¾ à¤ªà¥à¤°à¤•à¤¾à¤° à¤šà¥à¤¨à¥‡à¤‚
                                         </option>
@@ -421,7 +421,7 @@
                                     *<br>à¤¦à¤¿à¤µà¥à¤¯à¤¾à¤‚à¤—à¤¤à¤¾ à¤¸à¥‡ à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤
                                     à¤¦à¤¸à¥à¤¤à¤¾à¤µà¥‡à¤œà¤¼ à¤…à¤ªà¤²à¥‹à¤¡ à¤•à¤°à¥‡à¤‚ *</label>
                                 <input type="file" id="disability_documents" name="disability_documents" multiple
-                                    accept=".pdf,.jpg,.jpeg,.png">
+                                    accept=".pdf,.jpg,.jpeg,.png" aria-required="false">
                                 <small>Accepted formats: PDF, JPG, JPEG, PNG<br>à¤¸à¥à¤µà¥€à¤•à¥ƒà¤¤
                                     à¤«à¤¼à¥‰à¤°à¥à¤®à¥‡à¤Ÿ: PDF, JPG, JPEG, PNG</small>
                             </div>

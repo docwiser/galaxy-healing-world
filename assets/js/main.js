@@ -80,8 +80,22 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     window.toggleDOB = function () {
         const unknown = document.getElementById('unknown_dob').checked;
-        document.getElementById('dob').disabled = unknown;
+        const dobField = document.getElementById('dob');
+        const ageSelect = document.getElementById('approximate_age');
+
+        dobField.disabled = unknown;
+        dobField.setAttribute('aria-required', unknown ? 'false' : 'true');
         document.getElementById('age-input').classList.toggle('hidden', !unknown);
+
+        // Only require approximate_age when the DOB unknown checkbox is ticked
+        if (unknown) {
+            ageSelect.setAttribute('required', 'required');
+            ageSelect.setAttribute('aria-required', 'true');
+        } else {
+            ageSelect.removeAttribute('required');
+            ageSelect.setAttribute('aria-required', 'false');
+            ageSelect.setCustomValidity('');
+        }
     };
     window.calculateAge = function () {
         const dob = document.getElementById('dob').value;
@@ -105,29 +119,44 @@ document.addEventListener('DOMContentLoaded', function () {
         const section = document.getElementById('attendant-info');
         section.classList.toggle('hidden', !isAttendant);
 
-        const inputs = section.querySelectorAll('input');
-        inputs.forEach(input => {
+        const fields = section.querySelectorAll('input, select, textarea');
+        fields.forEach(field => {
             if (isAttendant) {
-                input.setAttribute('required', 'required');
+                field.setAttribute('required', 'required');
+                field.setAttribute('aria-required', 'true');
             } else {
-                input.removeAttribute('required');
+                field.removeAttribute('required');
+                field.setAttribute('aria-required', 'false');
+                field.setCustomValidity('');
             }
         });
     };
+
+    // Run on page load to ensure initial attendant state is correct (default: self)
+    window.toggleAttendantInfo();
     window.toggleDisabilityInfo = function () {
-        const hasDisability = document.querySelector('input[name="has_disability"]:checked').value === 'yes';
+        const checkedRadio = document.querySelector('input[name="has_disability"]:checked');
+        const hasDisability = checkedRadio && checkedRadio.value === 'yes';
         const section = document.getElementById('disability-info');
         section.classList.toggle('hidden', !hasDisability);
 
-        const fields = section.querySelectorAll('input, select');
+        // Toggle required + aria-required on all interactive fields in the section
+        const fields = section.querySelectorAll('input, select, textarea');
         fields.forEach(field => {
             if (hasDisability) {
                 field.setAttribute('required', 'required');
+                field.setAttribute('aria-required', 'true');
             } else {
                 field.removeAttribute('required');
+                field.setAttribute('aria-required', 'false');
+                // Clear any browser validation state
+                field.setCustomValidity('');
             }
         });
     };
+
+    // Run on page load to ensure initial state is correct (has_disability defaults to 'no')
+    window.toggleDisabilityInfo();
     window.fillAddressDetails = function () { };
     if (verifyForm) {
         // Helper to display messages and focus
@@ -316,14 +345,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const occupation = document.getElementById('occupation').value;
         const qualification = document.getElementById('qualification').value;
         const howLearned = document.getElementById('how_learned').value;
-        const disabilityRadios = document.querySelector('input[name="has_disability"]:checked');
+        const disabilityRadio = document.querySelector('input[name="has_disability"]:checked');
 
-        if (!occupation || !qualification || !howLearned || !disabilityRadios) {
+        if (!occupation || !qualification || !howLearned || !disabilityRadio) {
             bookingMessage.textContent = 'Please fill out all mandatory fields.';
             bookingMessage.className = 'message error';
             bookingMessage.classList.remove('hidden');
             bookingMessage.focus();
             return;
+        }
+
+        // Disability conditional validation — only check sub-fields if "yes" is selected
+        if (disabilityRadio.value === 'yes') {
+            const disabilityType = document.getElementById('disability_type').value;
+            const disabilityPct  = document.getElementById('disability_percentage').value;
+            const disabilityDocs = document.getElementById('disability_documents').files;
+            if (!disabilityType || !disabilityPct || disabilityDocs.length === 0) {
+                bookingMessage.textContent = 'Please fill in all disability details: type, percentage, and upload a document.';
+                bookingMessage.className = 'message error';
+                bookingMessage.classList.remove('hidden');
+                bookingMessage.focus();
+                return;
+            }
         }
 
 
